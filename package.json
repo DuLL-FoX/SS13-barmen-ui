@@ -1,0 +1,14 @@
+{
+  "name": "ss13-barmen-ui",
+  "version": "1.0.0",
+  "description": "Bartender recipe browser for SS13 drinks",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "NODE_ENV=development node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2"
+  }
+}

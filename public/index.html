@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Space Station 13 Bartender Recipes</title>
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__content">
+      <h1>SS13 Bartender Companion</h1>
+      <p>Reference BlueMoon Station drink recipes on a tidy surface built for shift bartenders.</p>
+      <div class="hero__actions">
+        <input id="search" type="search" placeholder="Search recipes or ingredients" aria-label="Search recipes">
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="filters">
+      <section>
+        <h2>Filter</h2>
+        <label class="toggle">
+          <input id="alcoholic" type="checkbox">
+          <span>Alcoholic only</span>
+        </label>
+        <label class="toggle">
+          <input id="nonAlcoholic" type="checkbox">
+          <span>Non-alcoholic only</span>
+        </label>
+        <label class="select-label" for="ingredient">Key ingredient</label>
+        <select id="ingredient">
+          <option value="">All ingredients</option>
+        </select>
+        <label class="select-label" for="source">Source</label>
+        <select id="source">
+          <option value="">All sources</option>
+        </select>
+        <label class="select-label" for="sort">Sort by</label>
+        <select id="sort">
+          <option value="name-asc">Name (A→Z)</option>
+          <option value="strength-desc">Strength (High→Low)</option>
+          <option value="strength-asc">Strength (Low→High)</option>
+        </select>
+      </section>
+      <section>
+        <h2>Dataset</h2>
+        <dl class="stats">
+          <div>
+            <dt>Recipes</dt>
+            <dd id="recipeCount">0</dd>
+          </div>
+          <div>
+            <dt>Fetched</dt>
+            <dd id="fetchedAt">-</dd>
+          </div>
+        </dl>
+      </section>
+    </aside>
+
+    <section class="content" aria-live="polite">
+      <div id="status" class="status">Loading recipes...</div>
+      <ul id="recipeList" class="recipe-list"></ul>
+    </section>
+  </main>
+
+  <template id="recipeTemplate">
+    <li class="recipe">
+      <header class="recipe__header">
+        <h3 class="recipe__title"></h3>
+        <div class="recipe__badges"></div>
+      </header>
+      <p class="recipe__message"></p>
+      <div class="recipe__columns">
+        <section>
+          <h4>Ingredients</h4>
+          <ul class="recipe__ingredients"></ul>
+        </section>
+        <section>
+          <h4>Results</h4>
+          <ul class="recipe__results"></ul>
+        </section>
+      </div>
+      <div class="recipe__relations">
+        <div class="recipe__relation" data-role="requires">
+          <h4>Builds From</h4>
+          <ul></ul>
+        </div>
+        <div class="recipe__relation" data-role="usedby">
+          <h4>Used In</h4>
+          <ul></ul>
+        </div>
+      </div>
+      <footer class="recipe__meta"></footer>
+    </li>
+  </template>
+
+  <script src="./app.js" type="module"></script>
+</body>
+</html>
