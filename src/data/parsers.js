@@ -498,23 +498,35 @@ export function parseDrinkContainers(dmText) {
       index += 1;
       continue;
     }
-    if (trimmed.startsWith("/obj/item/reagent_containers/food/drinks")) {
-      if (current) {
-        finalizeCurrent();
-      }
+
+    if (trimmed.startsWith("/obj/item/reagent_containers/")) {
       const path = trimmed.split(/\s+/)[0];
-      current = {
-        path,
-        name: null,
-        reagents: []
-      };
-      index += 1;
-      continue;
+      if (!path.includes("/proc/") && !path.includes("/verb/") && !path.includes("(") && !path.includes(")")) {
+        if (current) {
+          finalizeCurrent();
+        }
+        current = {
+          path,
+          name: null,
+          reagents: []
+        };
+        index += 1;
+        continue;
+      }
     }
+
     if (!current) {
       index += 1;
       continue;
     }
+
+    if (trimmed.startsWith("/obj/item") && !trimmed.startsWith("/obj/item/reagent_containers/")) {
+      finalizeCurrent();
+      current = null;
+      index += 1;
+      continue;
+    }
+
     if (trimmed.startsWith("name")) {
       current.name = extractStringValue(trimmed) ?? current.name;
       index += 1;
