@@ -472,6 +472,85 @@ export function parseChemDispenserSources(dmText) {
   return machines;
 }
 
+export function parseStructureReagentDispensers(dmText) {
+  const lines = dmText.split(/\r?\n/);
+  const machines = [];
+  let current = null;
+
+  const finalizeCurrent = () => {
+    if (!current) {
+      return;
+    }
+    const reagents = Array.from(new Set(current.reagents)).filter(Boolean);
+    if (!reagents.length) {
+      current = null;
+      return;
+    }
+    machines.push({
+      path: current.path,
+      name: current.name,
+      tiers: [
+        {
+          key: "base",
+          label: "Base",
+          reagents
+        }
+      ]
+    });
+    current = null;
+  };
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("//")) {
+      continue;
+    }
+    if (trimmed.startsWith("/obj/structure/reagent_dispensers")) {
+      const path = trimmed.split(/\s+/)[0];
+      if (path.includes("/proc/") || path.includes("/verb/") || path.includes("(") || path.includes(")")) {
+        continue;
+      }
+      if (current) {
+        finalizeCurrent();
+      }
+      current = {
+        path,
+        name: null,
+        reagents: []
+      };
+      continue;
+    }
+    if (!current) {
+      continue;
+    }
+    if (trimmed.startsWith("/obj/") && !trimmed.startsWith("/obj/structure/reagent_dispensers")) {
+      finalizeCurrent();
+      continue;
+    }
+    if (trimmed.startsWith("name")) {
+      current.name = extractStringValue(trimmed) ?? current.name;
+      continue;
+    }
+    if (trimmed.startsWith("reagent_id")) {
+      if (trimmed.includes("= null")) {
+        current.reagents = [];
+        continue;
+      }
+      const reagent = extractPathValue(trimmed);
+      if (reagent) {
+        current.reagents.push(reagent);
+      }
+      continue;
+    }
+  }
+
+  if (current) {
+    finalizeCurrent();
+  }
+
+  return machines;
+}
+
 export function parseDrinkContainers(dmText) {
   const lines = dmText.split(/\r?\n/);
   const containers = new Map();
@@ -625,6 +704,107 @@ export function parseVendingMachines(dmText) {
   }
 
   return machines;
+}
+
+export function parseSupplyPacks(dmText) {
+  const lines = dmText.split(/\r?\n/);
+  const packs = [];
+  let current = null;
+  let index = 0;
+
+  const finalizeCurrent = () => {
+    if (!current) {
+      return;
+    }
+    const contents = current.contents.filter((entry) => entry.path);
+    if (contents.length) {
+      packs.push({
+        path: current.path,
+        name: current.name,
+        crateName: current.crateName,
+        cost: current.cost,
+        contents
+      });
+    }
+    current = null;
+  };
+
+  while (index < lines.length) {
+    const rawLine = lines[index];
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("//")) {
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("/datum/supply_pack")) {
+      const path = trimmed.split(/\s+/)[0];
+      if (path.includes("/proc/") || path.includes("/verb/") || path.includes("(") || path.includes(")")) {
+        index += 1;
+        continue;
+      }
+      if (current) {
+        finalizeCurrent();
+      }
+      current = {
+        path,
+        name: null,
+        crateName: null,
+        cost: null,
+        contents: []
+      };
+      index += 1;
+      continue;
+    }
+    if (!current) {
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("/datum/") && !trimmed.startsWith("/datum/supply_pack")) {
+      finalizeCurrent();
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("name")) {
+      current.name = extractStringValue(trimmed) ?? current.name;
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("crate_name")) {
+      current.crateName = extractStringValue(trimmed) ?? current.crateName;
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("cost")) {
+      const cost = extractNumericValue(trimmed);
+      if (cost != null) {
+        current.cost = cost;
+      }
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("contains")) {
+      if (trimmed.includes("= null")) {
+        current.contents = [];
+        index += 1;
+        continue;
+      }
+      const { inner, nextIndex } = collectListBlock(lines, index);
+      const entries = parseListEntries(inner).map((entry) => ({
+        path: entry.path,
+        quantity: entry.quantity
+      }));
+      current.contents = entries;
+      index = nextIndex;
+      continue;
+    }
+    index += 1;
+  }
+
+  if (current) {
+    finalizeCurrent();
+  }
+
+  return packs;
 }
 
 export function hydrateFromDisk(recipePath, alcoholPath, drinkPath) {

@@ -1,8 +1,11 @@
 const state = {
   recipes: [],
   fetchedAt: null,
-  recipeLookup: new Map()
+  recipeLookup: new Map(),
+  showDeveloperDetails: false
 };
+
+const VIEW_MODE_STORAGE_KEY = "ss13-barmen-ui:view-mode";
 
 const elements = {
   search: document.getElementById("search"),
@@ -15,8 +18,35 @@ const elements = {
   fetchedAt: document.getElementById("fetchedAt"),
   status: document.getElementById("status"),
   recipeList: document.getElementById("recipeList"),
-  template: document.getElementById("recipeTemplate")
+  template: document.getElementById("recipeTemplate"),
+  viewToggle: document.getElementById("viewToggle")
 };
+
+function setViewMode(isDeveloperView) {
+  state.showDeveloperDetails = Boolean(isDeveloperView);
+  const mode = state.showDeveloperDetails ? "developer" : "standard";
+  document.body.dataset.view = mode;
+  if (elements.viewToggle) {
+    elements.viewToggle.textContent = state.showDeveloperDetails ? "Hide developer details" : "Show developer details";
+    elements.viewToggle.setAttribute("aria-pressed", state.showDeveloperDetails ? "true" : "false");
+  }
+  try {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  } catch (error) {
+    console.warn("Failed to persist view mode", error);
+  }
+}
+
+function restoreViewMode() {
+  let storedMode = null;
+  try {
+    storedMode = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  } catch (error) {
+    console.warn("Failed to read view mode", error);
+  }
+  const isDeveloper = storedMode === "developer";
+  setViewMode(isDeveloper);
+}
 
 function sanitizeMessage(message) {
   if (!message) {
@@ -101,6 +131,9 @@ function createSourceBadge(source) {
   }
   if (source.quantity != null) {
     parts.push(`${source.quantity}u`);
+  }
+  if (source.packCost != null) {
+    parts.push(`${source.packCost} pts`);
   }
   const label = parts.join(" • ");
   return createBadge(label, sourceBadgeVariant(source.tier));
@@ -635,7 +668,11 @@ function bindEvents() {
   if (elements.sort) {
     elements.sort.addEventListener("change", () => applyFilters());
   }
+  if (elements.viewToggle) {
+    elements.viewToggle.addEventListener("click", () => setViewMode(!state.showDeveloperDetails));
+  }
 }
 
+restoreViewMode();
 bindEvents();
 loadDataset();

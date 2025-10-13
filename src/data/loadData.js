@@ -4,11 +4,51 @@ import {
   parseChemicalReactions,
   parseReagents,
   parseChemDispenserSources,
+  parseStructureReagentDispensers,
   parseDrinkContainers,
-  parseVendingMachines
+  parseVendingMachines,
+  parseSupplyPacks
 } from "./parsers.js";
 
 const DEFAULT_USER_AGENT = "ss13-barmen-ui";
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN ? process.env.GITHUB_TOKEN.trim() : "";
+
+function buildGithubHeaders(additional = {}) {
+  const headers = {
+    "User-Agent": DEFAULT_USER_AGENT,
+    ...additional
+  };
+  if (GITHUB_TOKEN) {
+    headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
+  }
+  return headers;
+}
+
+function formatRateLimitMessage(response) {
+  if (!response || response.status !== 403) {
+    return null;
+  }
+  const remaining = response.headers?.get("x-ratelimit-remaining");
+  if (remaining !== "0") {
+    return null;
+  }
+  const reset = response.headers?.get("x-ratelimit-reset");
+  const resetEpoch = reset ? Number.parseInt(reset, 10) : Number.NaN;
+  const resetDate = Number.isFinite(resetEpoch) ? new Date(resetEpoch * 1000) : null;
+  const resetInfo = resetDate ? ` Rate limit resets around ${resetDate.toLocaleTimeString()}.` : "";
+  const authHint = GITHUB_TOKEN
+    ? " GitHub token is configured but the limit has still been reached."
+    : " Provide a personal access token via the GITHUB_TOKEN environment variable to raise the hourly quota.";
+  return `GitHub rate limit exceeded.${authHint}${resetInfo}`;
+}
+
+function createGithubError(url, response) {
+  const rateLimitMessage = formatRateLimitMessage(response);
+  if (rateLimitMessage) {
+    return new Error(`${rateLimitMessage} (while requesting ${url}).`);
+  }
+  return new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+}
 
 function stripByondFormatting(value) {
   if (typeof value !== "string" || !value.length) {
@@ -191,12 +231,10 @@ function computeStrength(recipe, reagentIndex) {
 
 async function fetchText(url) {
   const response = await fetch(url, {
-    headers: {
-      "User-Agent": DEFAULT_USER_AGENT
-    }
+    headers: buildGithubHeaders()
   });
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+    throw createGithubError(url, response);
   }
   return response.text();
 }
@@ -243,14 +281,11 @@ async function fetchGithubDirectoryFiles(directoryUrl, extensions = [".dm"]) {
     visited.add(current);
 
     const response = await fetch(current, {
-      headers: {
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": DEFAULT_USER_AGENT
-      }
+      headers: buildGithubHeaders({ Accept: "application/vnd.github.v3+json" })
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to list ${current}: ${response.status} ${response.statusText}`);
+      throw createGithubError(current, response);
     }
 
     const entries = await response.json();
@@ -291,6 +326,19 @@ async function collectGithubDirectoryFiles(directories, extensions = [".dm"]) {
   return Array.from(aggregate);
 }
 
+async function safeCollectGithubDirectoryFiles(directories, extensions, description) {
+  if (!Array.isArray(directories) || !directories.length) {
+    return [];
+  }
+  try {
+    return await collectGithubDirectoryFiles(directories, extensions);
+  } catch (error) {
+    const label = description || "GitHub directory group";
+    console.warn(`Skipping ${label}: ${error.message}`);
+    return [];
+  }
+}
+
 function mergeReagentMaps(...maps) {
   const combined = new Map();
   for (const map of maps) {
@@ -301,6 +349,84 @@ function mergeReagentMaps(...maps) {
     }
   }
   return combined;
+}
+
+function sanitizeIdentifier(value) {
+  if (value == null) {
+    return null;
+  }
+  let text = String(value).trim();
+  if (!text.length) {
+    return null;
+  }
+  const firstChar = text.charAt(0);
+  const lastChar = text.charAt(text.length - 1);
+  if ((firstChar === '"' && lastChar === '"') || (firstChar === "'" && lastChar === "'")) {
+    text = text.slice(1, -1).trim();
+  }
+  return text.length ? text : null;
+}
+
+function identifierKey(value) {
+  const sanitized = sanitizeIdentifier(value);
+  if (!sanitized) {
+    return null;
+  }
+  return sanitized.toLowerCase();
+}
+
+function lastPathSegment(value) {
+  const sanitized = sanitizeIdentifier(value);
+  if (!sanitized) {
+    return null;
+  }
+  const segments = sanitized.split("/").filter(Boolean);
+  if (!segments.length) {
+    return sanitized;
+  }
+  return segments[segments.length - 1];
+}
+
+function collectPrimaryResultKeys(recipe) {
+  const keys = new Set();
+  const idKey = identifierKey(recipe?.id);
+  if (idKey) {
+    keys.add(idKey);
+    const idTailKey = identifierKey(lastPathSegment(recipe.id));
+    if (idTailKey) {
+      keys.add(idTailKey);
+    }
+  }
+  const pathTailKey = identifierKey(lastPathSegment(recipe?.path));
+  if (pathTailKey) {
+    keys.add(pathTailKey);
+  }
+  return keys;
+}
+
+function selectPrimaryResults(recipe) {
+  if (!recipe || !Array.isArray(recipe.results)) {
+    return [];
+  }
+  const primaryKeys = collectPrimaryResultKeys(recipe);
+  const resultsWithKeys = recipe.results.filter((result) => identifierKey(result?.path));
+  if (primaryKeys.size) {
+    const matches = resultsWithKeys.filter((result) => {
+      const directKey = identifierKey(result.path);
+      if (directKey && primaryKeys.has(directKey)) {
+        return true;
+      }
+      const tailKey = identifierKey(lastPathSegment(result.path));
+      return tailKey ? primaryKeys.has(tailKey) : false;
+    });
+    if (matches.length) {
+      return matches;
+    }
+  }
+  if (resultsWithKeys.length) {
+    return [resultsWithKeys[0]];
+  }
+  return [];
 }
 
 function normalizeRecipe(definition, reagentIndex, reagentSources) {
@@ -320,7 +446,7 @@ function normalizeRecipe(definition, reagentIndex, reagentSources) {
     }
   }
   return {
-    id: definition.id ?? definition.path,
+    id: sanitizeIdentifier(definition.id) ?? definition.path,
     path: definition.path,
     name: definition.name ?? deriveDisplayName(definition.path, reagentIndex),
     results,
@@ -425,6 +551,99 @@ function buildVendorSourceIndex(vendingMachines, containerIndex) {
   return map;
 }
 
+function normalizeSupplyItemPath(path) {
+  if (!path) {
+    return null;
+  }
+  let normalized = path.trim();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized.startsWith("new ")) {
+    normalized = normalized.slice(4).trim();
+  }
+  const typecacheMatch = normalized.match(/^typecacheof\s*\((.+)\)$/i);
+  if (typecacheMatch) {
+    normalized = typecacheMatch[1].trim();
+  }
+  if (normalized.endsWith("()")) {
+    normalized = normalized.slice(0, -2).trim();
+  }
+  return normalized || null;
+}
+
+function deriveSupplyPackName(pack) {
+  if (!pack) {
+    return "Supply Pack";
+  }
+  const explicit = pack.crateName ?? pack.name ?? null;
+  return deriveMachineDisplayName(pack.path, explicit);
+}
+
+function formatSupplyItemName(baseName, quantity) {
+  if (!baseName) {
+    return baseName;
+  }
+  const amount = typeof quantity === "number" && Number.isFinite(quantity) ? Math.max(1, quantity) : 1;
+  if (amount <= 1) {
+    return baseName;
+  }
+  return `${baseName} (${amount}x)`;
+}
+
+function buildSupplySourceIndex(supplyPacks, containerIndex) {
+  const map = new Map();
+  if (!Array.isArray(supplyPacks) || !supplyPacks.length) {
+    return map;
+  }
+  for (const pack of supplyPacks) {
+    const machineName = deriveSupplyPackName(pack);
+    for (const entry of pack.contents) {
+      const itemPath = normalizeSupplyItemPath(entry.path);
+      if (!itemPath) {
+        continue;
+      }
+      const container = containerIndex.get(itemPath);
+      if (!container || !Array.isArray(container.reagents) || !container.reagents.length) {
+        continue;
+      }
+      const itemName = formatSupplyItemName(deriveItemDisplayName(itemPath, container.name), entry.quantity);
+      const itemQuantity = typeof entry.quantity === "number" && Number.isFinite(entry.quantity) ? entry.quantity : null;
+      for (const reagent of container.reagents) {
+        if (!reagent.path) {
+          continue;
+        }
+        if (!map.has(reagent.path)) {
+          map.set(reagent.path, []);
+        }
+        const sources = map.get(reagent.path);
+        const exists = sources.some(
+          (source) =>
+            source.machinePath === pack.path &&
+            source.itemPath === itemPath &&
+            source.tier === "supply" &&
+            source.tierLabel === "Supply Pack"
+        );
+        if (exists) {
+          continue;
+        }
+        sources.push({
+          machineName,
+          machinePath: pack.path,
+          tier: "supply",
+          tierLabel: "Supply Pack",
+          itemPath,
+          itemName,
+          itemQuantity,
+          quantity: reagent.quantity ?? null,
+          packCost: pack.cost ?? null
+        });
+      }
+    }
+  }
+  return map;
+}
+
 function appendSourceEntry(index, path, source) {
   if (!index.has(path)) {
     index.set(path, []);
@@ -503,14 +722,22 @@ async function fetchRecipeDataset() {
   };
 
   const recipeFileUrls = new Set(Array.isArray(RAW_SOURCES.recipeFiles) ? RAW_SOURCES.recipeFiles : []);
-  const recipeFolderFiles = await collectGithubDirectoryFiles(RAW_SOURCES.recipeFolders, [".dm"]);
+  const recipeFolderFiles = await safeCollectGithubDirectoryFiles(
+    RAW_SOURCES.recipeFolders,
+    [".dm"],
+    "recipe folders"
+  );
   recipeFolderFiles.forEach((url) => recipeFileUrls.add(url));
   await ingestRecipeSources(Array.from(recipeFileUrls).sort(), describeSource);
   await ingestRecipeSources(RAW_SOURCES.synthRecipeFiles, () => "Synth Drinks");
   const recipeDefinitions = Array.from(recipeMap.values());
 
   const reagentFileUrls = new Set(Array.isArray(RAW_SOURCES.reagentFiles) ? RAW_SOURCES.reagentFiles : []);
-  const reagentFolderFiles = await collectGithubDirectoryFiles(RAW_SOURCES.reagentFolders, [".dm"]);
+  const reagentFolderFiles = await safeCollectGithubDirectoryFiles(
+    RAW_SOURCES.reagentFolders,
+    [".dm"],
+    "reagent folders"
+  );
   reagentFolderFiles.forEach((url) => reagentFileUrls.add(url));
   const sortedReagentFiles = Array.from(reagentFileUrls).sort();
   const reagentTexts = await Promise.all(sortedReagentFiles.map((url) => fetchText(url)));
@@ -519,17 +746,29 @@ async function fetchRecipeDataset() {
 
   let dispenserMachines = [];
   const dispenserFileUrls = new Set(Array.isArray(RAW_SOURCES.dispenserFiles) ? RAW_SOURCES.dispenserFiles : []);
-  const dispenserFolderFiles = await collectGithubDirectoryFiles(RAW_SOURCES.dispenserFolders, [".dm"]);
+  const dispenserFolderFiles = await safeCollectGithubDirectoryFiles(
+    RAW_SOURCES.dispenserFolders,
+    [".dm"],
+    "reagent dispenser folders"
+  );
   dispenserFolderFiles.forEach((url) => dispenserFileUrls.add(url));
   if (dispenserFileUrls.size) {
     const dispenserTexts = await Promise.all(Array.from(dispenserFileUrls).sort().map((url) => fetchText(url)));
-    dispenserMachines = dispenserTexts.flatMap((text) => parseChemDispenserSources(text));
+    dispenserMachines = dispenserTexts.flatMap((text) => {
+      const chemDispensers = parseChemDispenserSources(text);
+      const structureDispensers = parseStructureReagentDispensers(text);
+      return chemDispensers.concat(structureDispensers);
+    });
   }
   let containerIndex = new Map();
   const containerFileUrls = new Set(
     Array.isArray(RAW_SOURCES.drinkContainerFiles) ? RAW_SOURCES.drinkContainerFiles : []
   );
-  const containerFolderFiles = await collectGithubDirectoryFiles(RAW_SOURCES.drinkContainerFolders, [".dm"]);
+  const containerFolderFiles = await safeCollectGithubDirectoryFiles(
+    RAW_SOURCES.drinkContainerFolders,
+    [".dm"],
+    "drink container folders"
+  );
   containerFolderFiles.forEach((url) => containerFileUrls.add(url));
   if (containerFileUrls.size) {
     const containerTexts = await Promise.all(Array.from(containerFileUrls).sort().map((url) => fetchText(url)));
@@ -537,9 +776,34 @@ async function fetchRecipeDataset() {
     containerIndex = mergeContainerMaps(...containerMaps);
   }
 
+  let supplyPacks = [];
+  const supplyPackFileUrls = new Set(Array.isArray(RAW_SOURCES.supplyPackFiles) ? RAW_SOURCES.supplyPackFiles : []);
+  const supplyPackFolderFiles = await safeCollectGithubDirectoryFiles(
+    RAW_SOURCES.supplyPackFolders,
+    [".dm"],
+    "supply pack folders"
+  );
+  supplyPackFolderFiles.forEach((url) => supplyPackFileUrls.add(url));
+  if (supplyPackFileUrls.size) {
+    const supplyPackTexts = [];
+    for (const url of Array.from(supplyPackFileUrls).sort()) {
+      try {
+        const text = await fetchText(url);
+        supplyPackTexts.push(text);
+      } catch (error) {
+        console.warn(`Skipping supply pack source ${url}: ${error.message}`);
+      }
+    }
+    supplyPacks = supplyPackTexts.flatMap((text) => parseSupplyPacks(text));
+  }
+
   let vendingMachines = [];
   const vendingFileUrls = new Set(Array.isArray(RAW_SOURCES.vendingFiles) ? RAW_SOURCES.vendingFiles : []);
-  const vendingFolderFiles = await collectGithubDirectoryFiles(RAW_SOURCES.vendingFolders, [".dm"]);
+  const vendingFolderFiles = await safeCollectGithubDirectoryFiles(
+    RAW_SOURCES.vendingFolders,
+    [".dm"],
+    "vending folders"
+  );
   vendingFolderFiles.forEach((url) => vendingFileUrls.add(url));
   if (vendingFileUrls.size) {
     const vendingTexts = await Promise.all(Array.from(vendingFileUrls).sort().map((url) => fetchText(url)));
@@ -548,7 +812,8 @@ async function fetchRecipeDataset() {
 
   const dispenserSources = buildReagentSourceIndex(dispenserMachines);
   const vendorSources = buildVendorSourceIndex(vendingMachines, containerIndex);
-  const reagentSourceIndex = combineSourceIndexes(dispenserSources, vendorSources);
+  const supplySources = buildSupplySourceIndex(supplyPacks, containerIndex);
+  const reagentSourceIndex = combineSourceIndexes(dispenserSources, vendorSources, supplySources);
 
   const recipes = recipeDefinitions.map((definition) => normalizeRecipe(definition, reagentIndex, reagentSourceIndex));
   recipes.sort((a, b) => a.name.localeCompare(b.name));
@@ -560,7 +825,8 @@ async function fetchRecipeDataset() {
 
   const producedBy = new Map();
   for (const recipe of recipes) {
-    for (const result of recipe.results) {
+    const primaryResults = selectPrimaryResults(recipe);
+    for (const result of primaryResults) {
       if (!producedBy.has(result.path)) {
         producedBy.set(result.path, []);
       }

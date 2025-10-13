@@ -18,7 +18,8 @@ export const RAW_SOURCES = {
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_sand/code/modules/reagents/chemistry/reagents/drink_reagents.dm",
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_splurt/code/modules/reagents/chemistry/reagents/drink_reagents.dm",
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/reagents/chemistry/reagents/drug_reagents.dm",
-    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_splurt/code/modules/reagents/chemistry/reagents/cit_reagents.dm"
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_splurt/code/modules/reagents/chemistry/reagents/cit_reagents.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/23fd2305023c3d282a229615a355f32acd7f7770/code/modules/reagents/chemistry/reagents/food_reagents.dm"
   ],
   reagentFolders: [
     "https://api.github.com/repos/BlueMoon-Labs/BlueMoon-Station/contents/modular_bluemoon/code/modules/reagents/chemistry/reagents?ref=622bfdcb0d6cd555ff21408db116f74cf04a55c3",
@@ -27,7 +28,8 @@ export const RAW_SOURCES = {
   dispenserFiles: [
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/reagents/chemistry/machinery/chem_dispenser.dm",
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_splurt/code/modules/reagents/chemistry/machinery/chem_dispenser.dm",
-    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_sand/code/modules/reagents/reagent_dispenser.dm"
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_sand/code/modules/reagents/reagent_dispenser.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/23fd2305023c3d282a229615a355f32acd7f7770/code/modules/reagents/reagent_dispenser.dm"
   ],
   dispenserFolders: [
     "https://api.github.com/repos/BlueMoon-Labs/BlueMoon-Station/contents/modular_splurt/code/modules/reagents/chemistry/machinery?ref=622bfdcb0d6cd555ff21408db116f74cf04a55c3"
@@ -36,7 +38,8 @@ export const RAW_SOURCES = {
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/food_and_drinks/drinks/drinks.dm",
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_bluemoon/code/modules/food_and_drinks/drinks/drinks.dm",
     "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/modular_bluemoon/code/modules/food_and_drinks/drinks/drinks/bottle.dm",
-    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/reagents/reagent_containers/bottle.dm"
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/reagents/reagent_containers/bottle.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/23fd2305023c3d282a229615a355f32acd7f7770/code/modules/reagents/reagent_containers/bottle.dm"
   ],
   drinkContainerFolders: [
     "https://api.github.com/repos/BlueMoon-Labs/BlueMoon-Station/contents/modular_splurt/code/modules/food_and_drinks/drinks?ref=622bfdcb0d6cd555ff21408db116f74cf04a55c3",
@@ -51,5 +54,16 @@ export const RAW_SOURCES = {
   ],
   vendingFolders: [
     "https://api.github.com/repos/BlueMoon-Labs/BlueMoon-Station/contents/modular_splurt/code/modules/vending?ref=622bfdcb0d6cd555ff21408db116f74cf04a55c3"
+  ],
+  supplyPackFiles: [
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/cargo/packs/organic.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/cargo/packs/armory.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/cargo/packs/medical.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/cargo/packs/misc.dm",
+    "https://raw.githubusercontent.com/BlueMoon-Labs/BlueMoon-Station/622bfdcb0d6cd555ff21408db116f74cf04a55c3/code/modules/cargo/packs/security.dm"
+  ],
+  supplyPackFolders: [
+    "https://api.github.com/repos/BlueMoon-Labs/BlueMoon-Station/contents/modular_bluemoon/code/modules/cargo/packs?ref=622bfdcb0d6cd555ff21408db116f74cf04a55c3",
+    "https://api.github.com/repos/BlueMoon-Labs/BlueMoon-Station/contents/modular_splurt/code/modules/cargo/packs?ref=622bfdcb0d6cd555ff21408db116f74cf04a55c3"
   ]
 };
