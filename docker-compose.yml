@@ -1,11 +1,13 @@
 services:
   ss13-barmen-ui:
     image: dullfox/ss13-bar-helper:latest
+    platform: linux/arm64
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      - PORT=24322
+      PORT: ${PORT:-24322}
+      NODE_ENV: production
     ports:
       - "24322:24322"
     networks:
