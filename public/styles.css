@@ -222,6 +222,60 @@ select {
   gap: 1rem;
 }
 
+.recipe__media {
+  --icon-width: 32px;
+  --icon-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: var(--panel-alt);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.recipe__media.is-hidden {
+  display: none;
+}
+
+.recipe__image {
+  width: min(96px, calc(var(--icon-width) * 2));
+  height: min(96px, calc(var(--icon-height) * 2));
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  padding: 0.35rem;
+}
+
+.recipe__media-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.recipe__media-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.recipe__media-source {
+  display: inline-block;
+  background: rgba(15, 17, 22, 0.6);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+body[data-view="standard"] .recipe__media-source {
+  display: none;
+}
+
 .recipe__title {
   margin: 0;
   font-size: 1.25rem;

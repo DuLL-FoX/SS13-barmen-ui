@@ -405,6 +405,68 @@ function renderRecipe(recipe) {
     badges.appendChild(createBadge(`Power ${recipe.strength}`, badgeVariantForStrength(recipe.strength)));
   }
 
+  const media = node.querySelector(".recipe__media");
+  if (media) {
+    const image = media.querySelector(".recipe__image");
+    const label = media.querySelector(".recipe__media-label");
+    const source = media.querySelector(".recipe__media-source");
+    if (recipe.icon?.src && image) {
+      media.classList.remove("is-hidden");
+      const width = Number.isFinite(recipe.icon.width) ? recipe.icon.width : null;
+      const height = Number.isFinite(recipe.icon.height) ? recipe.icon.height : null;
+      if (width) {
+        media.style.setProperty("--icon-width", `${width}px`);
+      } else {
+        media.style.setProperty("--icon-width", "32px");
+      }
+      if (height) {
+        media.style.setProperty("--icon-height", `${height}px`);
+      } else {
+        media.style.setProperty("--icon-height", "32px");
+      }
+      image.src = recipe.icon.src;
+      const altLabel = recipe.icon.label ?? recipe.name;
+      image.alt = altLabel ? `${altLabel} sprite` : `${recipe.name} sprite`;
+      if (label) {
+        label.textContent = altLabel ?? "";
+      }
+      if (source) {
+        const parts = [];
+        if (recipe.icon.sourceIcon) {
+          parts.push(recipe.icon.sourceIcon);
+        }
+        if (recipe.icon.state) {
+          parts.push(`state: ${recipe.icon.state}`);
+        }
+        if (recipe.icon.sourcePath) {
+          const originLabel = recipe.icon.origin ? recipe.icon.origin : "source";
+          parts.push(`${originLabel}: ${recipe.icon.sourcePath}`);
+        }
+        if (recipe.icon.attribution) {
+          parts.push(recipe.icon.attribution);
+        }
+        if (recipe.icon.license) {
+          parts.push(`license: ${recipe.icon.license}`);
+        }
+        source.textContent = parts.join(" • ");
+      }
+    } else {
+      media.classList.add("is-hidden");
+      media.style.removeProperty("--icon-width");
+      media.style.removeProperty("--icon-height");
+      if (image) {
+        image.removeAttribute("src");
+        image.alt = "";
+      }
+      if (label) {
+        label.textContent = "";
+      }
+      if (source) {
+        source.textContent = "";
+      }
+    }
+  }
+
   node.querySelector(".recipe__message").textContent = sanitizeMessage(recipe.mixMessage);
 
   const ingredientList = node.querySelector(".recipe__ingredients");

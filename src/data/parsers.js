@@ -334,7 +334,11 @@ export function parseReagents(dmText) {
         description: null,
         tasteDescription: null,
         color: null,
-        boozePower: null
+        boozePower: null,
+        icon: null,
+        iconState: null,
+        glassIcon: null,
+        glassIconState: null
       };
       continue;
     }
@@ -359,6 +363,22 @@ export function parseReagents(dmText) {
     }
     if (trimmed.startsWith("color")) {
       current.color = extractStringValue(trimmed) ?? extractPathValue(trimmed);
+      continue;
+    }
+    if (trimmed.startsWith("glass_icon_state")) {
+      current.glassIconState = extractStringValue(trimmed) ?? current.glassIconState;
+      continue;
+    }
+    if (trimmed.startsWith("glass_icon")) {
+      current.glassIcon = extractStringValue(trimmed) ?? extractPathValue(trimmed) ?? current.glassIcon;
+      continue;
+    }
+    if (trimmed.startsWith("icon_state")) {
+      current.iconState = extractStringValue(trimmed) ?? current.iconState;
+      continue;
+    }
+    if (trimmed.startsWith("icon")) {
+      current.icon = extractStringValue(trimmed) ?? extractPathValue(trimmed) ?? current.icon;
       continue;
     }
     if (trimmed.startsWith("boozepwr")) {
@@ -565,7 +585,11 @@ export function parseDrinkContainers(dmText) {
       containers.set(current.path, {
         path: current.path,
         name: current.name,
-        reagents: current.reagents
+        reagents: current.reagents,
+        icon: current.icon,
+        iconState: current.iconState,
+        glassIcon: current.glassIcon,
+        glassIconState: current.glassIconState
       });
     }
   };
@@ -587,7 +611,11 @@ export function parseDrinkContainers(dmText) {
         current = {
           path,
           name: null,
-          reagents: []
+          reagents: [],
+          icon: null,
+          iconState: null,
+          glassIcon: null,
+          glassIconState: null
         };
         index += 1;
         continue;
@@ -608,6 +636,26 @@ export function parseDrinkContainers(dmText) {
 
     if (trimmed.startsWith("name")) {
       current.name = extractStringValue(trimmed) ?? current.name;
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("glass_icon_state")) {
+      current.glassIconState = extractStringValue(trimmed) ?? current.glassIconState;
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("glass_icon")) {
+      current.glassIcon = extractStringValue(trimmed) ?? extractPathValue(trimmed) ?? current.glassIcon;
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("icon_state")) {
+      current.iconState = extractStringValue(trimmed) ?? current.iconState;
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("icon")) {
+      current.icon = extractStringValue(trimmed) ?? extractPathValue(trimmed) ?? current.icon;
       index += 1;
       continue;
     }
