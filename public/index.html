@@ -11,6 +11,7 @@
   <header class="hero">
     <div class="hero__content">
       <h1>SS13 Bartender Companion</h1>
+      <p>Browse, filter, and compare drinks across content packs with a tactile bartender dashboard.</p>
       <div class="hero__actions">
         <input id="search" type="search" placeholder="Search recipes or ingredients" aria-label="Search recipes">
         <button id="viewToggle" type="button" class="hero__toggle" aria-pressed="false">Show developer details</button>
@@ -20,8 +21,10 @@
 
   <main class="layout">
     <aside class="filters">
-      <section>
-        <h2>Filter</h2>
+      <section class="filters__group">
+        <div class="filters__header">
+          <h2>Quick Filters</h2>
+        </div>
         <label class="toggle">
           <input id="alcoholic" type="checkbox">
           <span>Alcoholic only</span>
@@ -34,10 +37,6 @@
         <select id="ingredient">
           <option value="">All ingredients</option>
         </select>
-        <label class="select-label" for="source">Source</label>
-        <select id="source">
-          <option value="">All sources</option>
-        </select>
         <label class="select-label" for="sort">Sort by</label>
         <select id="sort">
           <option value="name-asc">Name (A→Z)</option>
@@ -45,8 +44,32 @@
           <option value="strength-asc">Strength (Low→High)</option>
         </select>
       </section>
-      <section>
-        <h2>Dataset</h2>
+      <section class="filters__group">
+        <div class="filters__header">
+          <h2>Sources</h2>
+          <div class="filters__actions">
+            <button id="sourceToggleAll" type="button" class="filters__action">Reset sources</button>
+          </div>
+        </div>
+        <p class="filters__hint">Toggle content packs to control which recipes appear.</p>
+        <div id="sourceList" class="filters__chips filters__chips--scroll" role="group" aria-label="Recipe sources"></div>
+        <div class="filters__subheader">
+          <h3>Ingredient availability</h3>
+          <div class="filters__actions">
+            <button id="sourceCategoryToggleAll" type="button" class="filters__action">Reset categories</button>
+          </div>
+        </div>
+        <p class="filters__hint">Hide dispenser, crate, or vendor options from ingredient details.</p>
+        <div class="filters__search">
+          <input id="sourceCategorySearch" type="search" placeholder="Search source categories" aria-label="Search source categories">
+        </div>
+        <div id="sourceCategoryList" class="filters__chips filters__chips--scroll" role="group" aria-label="Ingredient source categories"></div>
+        <button id="sourceCategoryShowMore" type="button" class="filters__show-more" aria-controls="sourceCategoryList" aria-expanded="false">Show all</button>
+      </section>
+      <section class="filters__group">
+        <div class="filters__header">
+          <h2>Dataset</h2>
+        </div>
         <dl class="stats">
           <div>
             <dt>Recipes</dt>

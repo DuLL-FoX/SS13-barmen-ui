@@ -2,24 +2,50 @@ const state = {
   recipes: [],
   fetchedAt: null,
   recipeLookup: new Map(),
-  showDeveloperDetails: false
+  showDeveloperDetails: false,
+  sourceFilters: {
+    disabled: new Set(),
+    options: []
+  },
+  sourceCategoryFilters: {
+    disabled: new Set(),
+    options: [],
+    searchTerm: "",
+    showAll: false
+  }
 };
 
 const VIEW_MODE_STORAGE_KEY = "ss13-barmen-ui:view-mode";
+const SOURCE_FILTER_STORAGE_KEY = "ss13-barmen-ui:disabled-sources";
+const SOURCE_CATEGORY_FILTER_STORAGE_KEY = "ss13-barmen-ui:disabled-source-categories";
+const SOURCE_CATEGORY_VISIBLE_LIMIT = 18;
+const DISPENSER_TIERS = new Set(["base", "upgrade1", "upgrade2", "upgrade3", "upgrade4", "emag"]);
+const SOURCE_CATEGORY_DEFINITIONS = {
+  dispenser: { key: "dispenser", label: "Dispenser" },
+  supply: { key: "supply", label: "Supply Pack" },
+  vendor: { key: "vendor", label: "Vendor (Bottle)" },
+  other: { key: "other", label: "Other Sources" }
+};
+const SOURCE_CATEGORY_ORDER = ["dispenser", "supply", "vendor", "other"];
 
 const elements = {
   search: document.getElementById("search"),
   alcoholic: document.getElementById("alcoholic"),
   nonAlcoholic: document.getElementById("nonAlcoholic"),
   ingredient: document.getElementById("ingredient"),
-  source: document.getElementById("source"),
   sort: document.getElementById("sort"),
   recipeCount: document.getElementById("recipeCount"),
   fetchedAt: document.getElementById("fetchedAt"),
   status: document.getElementById("status"),
   recipeList: document.getElementById("recipeList"),
   template: document.getElementById("recipeTemplate"),
-  viewToggle: document.getElementById("viewToggle")
+  viewToggle: document.getElementById("viewToggle"),
+  sourceList: document.getElementById("sourceList"),
+  sourceToggleAll: document.getElementById("sourceToggleAll"),
+  sourceCategoryList: document.getElementById("sourceCategoryList"),
+  sourceCategoryToggleAll: document.getElementById("sourceCategoryToggleAll"),
+  sourceCategorySearch: document.getElementById("sourceCategorySearch"),
+  sourceCategoryShowMore: document.getElementById("sourceCategoryShowMore")
 };
 
 function setViewMode(isDeveloperView) {
@@ -46,6 +72,119 @@ function restoreViewMode() {
   }
   const isDeveloper = storedMode === "developer";
   setViewMode(isDeveloper);
+}
+
+function normalizeSourceKey(value) {
+  if (!value) {
+    return "__none__";
+  }
+  const trimmed = value.toString().trim();
+  if (!trimmed.length) {
+    return "__none__";
+  }
+  return trimmed.toLowerCase();
+}
+
+function sourceDisplayLabel(value) {
+  if (!value || !value.toString().trim().length) {
+    return "Unspecified";
+  }
+  return value.toString().trim();
+}
+
+function persistSourceFilters() {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  try {
+    const payload = JSON.stringify(Array.from(state.sourceFilters.disabled));
+    localStorage.setItem(SOURCE_FILTER_STORAGE_KEY, payload);
+  } catch (error) {
+    console.warn("Failed to persist source filters", error);
+  }
+}
+
+function restoreSourceFilters() {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  try {
+    const payload = localStorage.getItem(SOURCE_FILTER_STORAGE_KEY);
+    if (!payload) {
+      return;
+    }
+    const parsed = JSON.parse(payload);
+    if (Array.isArray(parsed)) {
+      state.sourceFilters.disabled = new Set(parsed.map((entry) => normalizeSourceKey(entry)));
+    }
+  } catch (error) {
+    console.warn("Failed to read source filters", error);
+  }
+}
+
+function updateSourceControlsState() {
+  if (elements.sourceList) {
+    const buttons = elements.sourceList.querySelectorAll("button[data-source-key]");
+    buttons.forEach((button) => {
+      const key = button.dataset.sourceKey;
+      const isEnabled = !state.sourceFilters.disabled.has(key);
+      button.setAttribute("aria-pressed", isEnabled ? "true" : "false");
+    });
+  }
+  if (elements.sourceToggleAll) {
+    const shouldDisable = state.sourceFilters.disabled.size === 0;
+    elements.sourceToggleAll.disabled = shouldDisable;
+    elements.sourceToggleAll.setAttribute("aria-disabled", shouldDisable ? "true" : "false");
+  }
+}
+
+function persistSourceCategoryFilters() {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  try {
+    const payload = JSON.stringify(Array.from(state.sourceCategoryFilters.disabled));
+    localStorage.setItem(SOURCE_CATEGORY_FILTER_STORAGE_KEY, payload);
+  } catch (error) {
+    console.warn("Failed to persist source category filters", error);
+  }
+}
+
+function restoreSourceCategoryFilters() {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  try {
+    const payload = localStorage.getItem(SOURCE_CATEGORY_FILTER_STORAGE_KEY);
+    if (!payload) {
+      return;
+    }
+    const parsed = JSON.parse(payload);
+    if (Array.isArray(parsed)) {
+      const normalized = parsed
+        .map((entry) => (entry == null ? "" : entry.toString().trim().toLowerCase()))
+        .filter((entry) => entry.length);
+      state.sourceCategoryFilters.disabled = new Set(normalized);
+    }
+  } catch (error) {
+    console.warn("Failed to read source category filters", error);
+  }
+}
+
+function updateSourceCategoryControlsState() {
+  if (elements.sourceCategoryList) {
+    const buttons = elements.sourceCategoryList.querySelectorAll("button[data-source-category-key]");
+    buttons.forEach((button) => {
+      const key = button.dataset.sourceCategoryKey;
+      const isEnabled = !state.sourceCategoryFilters.disabled.has(key);
+      button.setAttribute("aria-pressed", isEnabled ? "true" : "false");
+    });
+  }
+  if (elements.sourceCategoryToggleAll) {
+    const shouldDisable = state.sourceCategoryFilters.disabled.size === 0;
+    elements.sourceCategoryToggleAll.disabled = shouldDisable;
+    elements.sourceCategoryToggleAll.setAttribute("aria-disabled", shouldDisable ? "true" : "false");
+  }
 }
 
 function sanitizeMessage(message) {
@@ -91,9 +230,14 @@ function createListItem(item) {
     const sourceList = document.createElement("div");
     sourceList.className = "ingredient__sources";
     item.sources.forEach((source) => {
-      sourceList.appendChild(createSourceBadge(source));
+      const badge = createSourceBadge(source);
+      if (badge) {
+        sourceList.appendChild(badge);
+      }
     });
-    li.appendChild(sourceList);
+    if (sourceList.childElementCount) {
+      li.appendChild(sourceList);
+    }
   }
 
   return li;
@@ -122,7 +266,47 @@ function sourceBadgeVariant(tier) {
   return "neutral";
 }
 
-function createSourceBadge(source) {
+function deriveSourceCategory(source) {
+  if (!source) {
+    return SOURCE_CATEGORY_DEFINITIONS.other;
+  }
+
+  const tier = (source.tier ?? "").toLowerCase();
+  const machineName = (source.machineName ?? "").toLowerCase();
+  const machinePath = (source.machinePath ?? "").toLowerCase();
+  const tierLabel = (source.tierLabel ?? "").toLowerCase();
+
+  if (tier === "supply" || source.packCost != null || tierLabel.includes("supply")) {
+    return SOURCE_CATEGORY_DEFINITIONS.supply;
+  }
+
+  if (
+    tier === "vendor" ||
+    machineName.includes("vendor") ||
+    machinePath.includes("/vending/") ||
+    machineName.includes("boozeomat")
+  ) {
+    return SOURCE_CATEGORY_DEFINITIONS.vendor;
+  }
+
+  if (DISPENSER_TIERS.has(tier)) {
+    return SOURCE_CATEGORY_DEFINITIONS.dispenser;
+  }
+
+  if (
+    machineName.includes("dispenser") ||
+    machineName.includes("synth") ||
+    machineName.includes("chem") ||
+    machinePath.includes("chem_dispenser") ||
+    machinePath.includes("reagent_dispenser")
+  ) {
+    return SOURCE_CATEGORY_DEFINITIONS.dispenser;
+  }
+
+  return SOURCE_CATEGORY_DEFINITIONS.other;
+}
+
+function formatSourceLabel(source) {
   const machineLabel = source.machineName ?? source.machinePath ?? "Unknown";
   const tierLabel = source.tierLabel || "Base";
   const parts = [`${machineLabel} · ${tierLabel}`];
@@ -135,7 +319,27 @@ function createSourceBadge(source) {
   if (source.packCost != null) {
     parts.push(`${source.packCost} pts`);
   }
-  const label = parts.join(" • ");
+  return parts.join(" • ");
+}
+
+function buildSourceCategoryKey(source) {
+  const category = deriveSourceCategory(source);
+  return category?.key ?? null;
+}
+
+function isSourceCategoryDisabled(source) {
+  const key = buildSourceCategoryKey(source);
+  if (!key) {
+    return false;
+  }
+  return state.sourceCategoryFilters.disabled.has(key);
+}
+
+function createSourceBadge(source) {
+  if (isSourceCategoryDisabled(source)) {
+    return null;
+  }
+  const label = formatSourceLabel(source);
   return createBadge(label, sourceBadgeVariant(source.tier));
 }
 
@@ -527,7 +731,18 @@ function renderList(recipes) {
     fragment.appendChild(renderRecipe(recipe));
   });
   elements.recipeList.appendChild(fragment);
-  elements.status.textContent = `Showing ${recipes.length} of ${state.recipes.length} recipe${recipes.length === 1 ? "" : "s"}.`;
+  const totalSources = state.sourceFilters.options.length;
+  const enabledSources = totalSources - state.sourceFilters.disabled.size;
+  const parts = [`Showing ${recipes.length} of ${state.recipes.length} recipe${recipes.length === 1 ? "" : "s"}.`];
+  if (totalSources > 0) {
+    parts.push(`${enabledSources}/${totalSources} sources enabled.`);
+  }
+  const totalCategories = state.sourceCategoryFilters.options.length;
+  if (totalCategories > 0) {
+    const enabledCategories = totalCategories - state.sourceCategoryFilters.disabled.size;
+    parts.push(`${enabledCategories}/${totalCategories} source categories visible.`);
+  }
+  elements.status.textContent = parts.join(" ");
 }
 
 function updateSummary(total, fetchedAt) {
@@ -561,48 +776,230 @@ function populateIngredients(options) {
 }
 
 function populateSources(recipes) {
-  const select = elements.source;
-  if (!select) {
+  if (!Array.isArray(recipes) || !elements.sourceList) {
     return;
   }
-  select.innerHTML = "";
-  const defaultOption = document.createElement("option");
-  defaultOption.value = "";
-  defaultOption.textContent = "All sources";
-  select.appendChild(defaultOption);
 
   const counts = new Map();
-  let unspecifiedCount = 0;
+  const labels = new Map();
+
   recipes.forEach((recipe) => {
-    const key = (recipe.source ?? "").trim();
+    const key = normalizeSourceKey(recipe.source);
+    const label = sourceDisplayLabel(recipe.source);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (!labels.has(key)) {
+      labels.set(key, label);
+    }
+  });
+
+  const entries = Array.from(counts.entries()).map(([key, count]) => ({
+    key,
+    count,
+    label: labels.get(key) ?? "Unspecified"
+  }));
+
+  entries.sort((a, b) => {
+    if (a.key === "__none__" && b.key === "__none__") {
+      return 0;
+    }
+    if (a.key === "__none__") {
+      return 1;
+    }
+    if (b.key === "__none__") {
+      return -1;
+    }
+    return a.label.localeCompare(b.label);
+  });
+
+  state.sourceFilters.options = entries;
+  const validKeys = new Set(entries.map((entry) => entry.key));
+  state.sourceFilters.disabled = new Set(
+    Array.from(state.sourceFilters.disabled).filter((key) => validKeys.has(key))
+  );
+
+  const fragment = document.createDocumentFragment();
+
+  entries.forEach((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chip-toggle";
+    button.dataset.sourceKey = entry.key;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = entry.label;
+    const countSpan = document.createElement("span");
+    countSpan.className = "chip-toggle__count";
+    countSpan.textContent = entry.count.toString();
+
+    button.append(labelSpan, countSpan);
+    fragment.appendChild(button);
+  });
+
+  elements.sourceList.innerHTML = "";
+  if (!entries.length) {
+    const emptyState = document.createElement("p");
+    emptyState.className = "filters__hint";
+    emptyState.textContent = "Sources will appear once recipes are loaded.";
+    elements.sourceList.appendChild(emptyState);
+  } else {
+    elements.sourceList.appendChild(fragment);
+  }
+
+  updateSourceControlsState();
+  persistSourceFilters();
+}
+
+function populateSourceCategories(recipes) {
+  if (!Array.isArray(recipes)) {
+    return;
+  }
+
+  const counts = new Map();
+  const labels = new Map();
+
+  const registerSource = (source) => {
+    const category = deriveSourceCategory(source);
+    if (!category || !category.key) {
+      return;
+    }
+    const key = category.key;
     if (!key) {
-      unspecifiedCount += 1;
       return;
     }
     counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (!labels.has(key)) {
+      labels.set(key, category.label);
+    }
+  };
+
+  const collectFromItems = (items) => {
+    if (!Array.isArray(items)) {
+      return;
+    }
+    items.forEach((item) => {
+      if (!Array.isArray(item.sources)) {
+        return;
+      }
+      item.sources.forEach(registerSource);
+    });
+  };
+
+  recipes.forEach((recipe) => {
+    collectFromItems(recipe.requiredReagents);
+    collectFromItems(recipe.results);
+    collectFromItems(recipe.requiredCatalysts);
   });
 
-  Array.from(counts.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([source, count]) => {
-      const option = document.createElement("option");
-      option.value = source;
-      option.textContent = `${source} — ${count} recipe${count === 1 ? "" : "s"}`;
-      select.appendChild(option);
-    });
+  const entries = Array.from(counts.entries()).map(([key, count]) => ({
+    key,
+    count,
+    label: labels.get(key) ?? (SOURCE_CATEGORY_DEFINITIONS[key]?.label ?? "Other Sources")
+  }));
 
-  if (unspecifiedCount > 0) {
-    const option = document.createElement("option");
-    option.value = "__none__";
-    option.textContent = `Unspecified — ${unspecifiedCount} recipe${unspecifiedCount === 1 ? "" : "s"}`;
-    select.appendChild(option);
+  entries.sort((a, b) => {
+    const orderA = SOURCE_CATEGORY_ORDER.indexOf(a.key);
+    const orderB = SOURCE_CATEGORY_ORDER.indexOf(b.key);
+    const safeA = orderA === -1 ? Number.MAX_SAFE_INTEGER : orderA;
+    const safeB = orderB === -1 ? Number.MAX_SAFE_INTEGER : orderB;
+    if (safeA !== safeB) {
+      return safeA - safeB;
+    }
+    return a.label.localeCompare(b.label);
+  });
+
+  state.sourceCategoryFilters.options = entries;
+  const validKeys = new Set(entries.map((entry) => entry.key));
+  state.sourceCategoryFilters.disabled = new Set(
+    Array.from(state.sourceCategoryFilters.disabled).filter((key) => validKeys.has(key))
+  );
+  state.sourceCategoryFilters.showAll = false;
+
+  renderSourceCategoryList();
+  persistSourceCategoryFilters();
+}
+
+function renderSourceCategoryList() {
+  if (!elements.sourceCategoryList) {
+    return;
   }
+
+  if (elements.sourceCategorySearch) {
+    const currentValue = elements.sourceCategorySearch.value ?? "";
+    if (currentValue !== state.sourceCategoryFilters.searchTerm) {
+      elements.sourceCategorySearch.value = state.sourceCategoryFilters.searchTerm;
+    }
+  }
+
+  const { options, searchTerm, showAll } = state.sourceCategoryFilters;
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  let entries = options;
+  if (normalizedSearch.length) {
+    entries = options.filter((entry) => entry.label.toLowerCase().includes(normalizedSearch));
+  }
+
+  const shouldLimit = !showAll && !normalizedSearch.length && entries.length > SOURCE_CATEGORY_VISIBLE_LIMIT;
+  const visibleEntries = shouldLimit ? entries.slice(0, SOURCE_CATEGORY_VISIBLE_LIMIT) : entries;
+
+  elements.sourceCategoryList.innerHTML = "";
+
+  if (!visibleEntries.length) {
+    const message = document.createElement("p");
+    message.className = "filters__hint";
+    message.textContent = options.length
+      ? "No categories match your search."
+      : "Source categories will appear once recipe data is loaded.";
+    elements.sourceCategoryList.appendChild(message);
+    updateSourceCategoryShowMore(entries.length);
+    updateSourceCategoryControlsState();
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  visibleEntries.forEach((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chip-toggle";
+    button.dataset.sourceCategoryKey = entry.key;
+    button.title = entry.label;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = entry.label;
+    const countSpan = document.createElement("span");
+    countSpan.className = "chip-toggle__count";
+    countSpan.textContent = entry.count.toString();
+
+    button.append(labelSpan, countSpan);
+    fragment.appendChild(button);
+  });
+
+  elements.sourceCategoryList.appendChild(fragment);
+  updateSourceCategoryControlsState();
+  updateSourceCategoryShowMore(entries.length);
+}
+
+function updateSourceCategoryShowMore(totalEntries) {
+  if (!elements.sourceCategoryShowMore) {
+    return;
+  }
+  const hasSearch = state.sourceCategoryFilters.searchTerm.trim().length > 0;
+  if (totalEntries <= SOURCE_CATEGORY_VISIBLE_LIMIT || hasSearch) {
+    elements.sourceCategoryShowMore.hidden = true;
+    elements.sourceCategoryShowMore.setAttribute("aria-expanded", "false");
+    return;
+  }
+  elements.sourceCategoryShowMore.hidden = false;
+  elements.sourceCategoryShowMore.textContent = state.sourceCategoryFilters.showAll
+    ? "Show less"
+    : `Show all (${totalEntries})`;
+  elements.sourceCategoryShowMore.setAttribute(
+    "aria-expanded",
+    state.sourceCategoryFilters.showAll ? "true" : "false"
+  );
 }
 
 function applyFilters() {
   const searchTerm = elements.search.value.trim().toLowerCase();
   const selectedIngredient = elements.ingredient.value;
-  const selectedSource = elements.source ? elements.source.value : "";
   const alcoholicOnly = elements.alcoholic.checked;
   const nonAlcoholicOnly = elements.nonAlcoholic.checked;
 
@@ -620,13 +1017,11 @@ function applyFilters() {
       recipe.requiredReagents.some((item) => item.path === selectedIngredient)
     );
   }
-  if (selectedSource) {
-    if (selectedSource === "__none__") {
-      filtered = filtered.filter((recipe) => !recipe.source);
-    } else {
-      const lowered = selectedSource.toLowerCase();
-      filtered = filtered.filter((recipe) => recipe.source && recipe.source.toLowerCase() === lowered);
-    }
+  if (state.sourceFilters.disabled.size) {
+    filtered = filtered.filter((recipe) => {
+      const key = normalizeSourceKey(recipe.source);
+      return !state.sourceFilters.disabled.has(key);
+    });
   }
   if (alcoholicOnly && !nonAlcoholicOnly) {
     filtered = filtered.filter((recipe) => recipe.isAlcoholic);
@@ -637,13 +1032,101 @@ function applyFilters() {
   renderList(sorted);
 }
 
+function toggleSourceFilter(key) {
+  if (!key) {
+    return;
+  }
+  const normalized = normalizeSourceKey(key);
+  if (state.sourceFilters.disabled.has(normalized)) {
+    state.sourceFilters.disabled.delete(normalized);
+  } else {
+    state.sourceFilters.disabled.add(normalized);
+  }
+  updateSourceControlsState();
+  persistSourceFilters();
+  applyFilters();
+}
+
+function resetSourceFilters() {
+  if (!state.sourceFilters.disabled.size) {
+    return;
+  }
+  state.sourceFilters.disabled = new Set();
+  updateSourceControlsState();
+  persistSourceFilters();
+  applyFilters();
+}
+
+function handleSourceToggleClick(event) {
+  const button = event.target.closest("button[data-source-key]");
+  if (!button) {
+    return;
+  }
+  event.preventDefault();
+  toggleSourceFilter(button.dataset.sourceKey);
+}
+
+function toggleSourceCategoryFilter(key) {
+  if (!key) {
+    return;
+  }
+  const normalized = key.toString().trim().toLowerCase();
+  if (!normalized.length) {
+    return;
+  }
+  if (state.sourceCategoryFilters.disabled.has(normalized)) {
+    state.sourceCategoryFilters.disabled.delete(normalized);
+  } else {
+    state.sourceCategoryFilters.disabled.add(normalized);
+  }
+  updateSourceCategoryControlsState();
+  persistSourceCategoryFilters();
+  applyFilters();
+}
+
+function resetSourceCategoryFilters() {
+  const hadDisabled = state.sourceCategoryFilters.disabled.size > 0;
+  const hadSearch = Boolean(state.sourceCategoryFilters.searchTerm);
+  const hadShowAll = state.sourceCategoryFilters.showAll;
+  if (!hadDisabled && !hadSearch && !hadShowAll) {
+    return;
+  }
+  state.sourceCategoryFilters.disabled = new Set();
+  state.sourceCategoryFilters.searchTerm = "";
+  state.sourceCategoryFilters.showAll = false;
+  renderSourceCategoryList();
+  persistSourceCategoryFilters();
+  if (hadDisabled) {
+    applyFilters();
+  }
+}
+
+function handleSourceCategoryToggleClick(event) {
+  const button = event.target.closest("button[data-source-category-key]");
+  if (!button) {
+    return;
+  }
+  event.preventDefault();
+  toggleSourceCategoryFilter(button.dataset.sourceCategoryKey);
+}
+
+function handleSourceCategorySearch(event) {
+  state.sourceCategoryFilters.searchTerm = event.target.value ?? "";
+  state.sourceCategoryFilters.showAll = false;
+  renderSourceCategoryList();
+}
+
+function toggleSourceCategoryShowAll() {
+  state.sourceCategoryFilters.showAll = !state.sourceCategoryFilters.showAll;
+  renderSourceCategoryList();
+}
+
 async function loadDataset() {
   const hasExistingData = state.recipes.length > 0;
   const currentFilters = hasExistingData
     ? {
         search: elements.search.value,
         ingredient: elements.ingredient.value,
-        source: elements.source ? elements.source.value : "",
         alcoholic: elements.alcoholic.checked,
         nonAlcoholic: elements.nonAlcoholic.checked,
         sort: elements.sort ? elements.sort.value : "name-asc"
@@ -651,7 +1134,6 @@ async function loadDataset() {
     : {
         search: "",
         ingredient: "",
-        source: "",
         alcoholic: false,
         nonAlcoholic: false,
         sort: elements.sort ? elements.sort.value || "name-asc" : "name-asc"
@@ -676,6 +1158,7 @@ async function loadDataset() {
     state.recipeLookup = new Map(state.recipes.map((recipe) => [recipe.id, recipe]));
     populateIngredients(ingredientData.ingredients ?? []);
     populateSources(state.recipes);
+  populateSourceCategories(state.recipes);
     updateSummary(state.recipes.length, state.fetchedAt);
     if (elements.sort) {
       const sortOptions = Array.from(elements.sort.options).map((option) => option.value);
@@ -694,14 +1177,6 @@ async function loadDataset() {
     } else {
       elements.ingredient.value = "";
     }
-    if (elements.source) {
-      const availableSources = new Set(Array.from(elements.source.options).map((option) => option.value));
-      if (availableSources.has(currentFilters.source)) {
-        elements.source.value = currentFilters.source;
-      } else {
-        elements.source.value = "";
-      }
-    }
     applyFilters();
   } catch (error) {
     console.error(error);
@@ -712,9 +1187,6 @@ async function loadDataset() {
 function bindEvents() {
   elements.search.addEventListener("input", () => applyFilters());
   elements.ingredient.addEventListener("change", () => applyFilters());
-  if (elements.source) {
-    elements.source.addEventListener("change", () => applyFilters());
-  }
   elements.alcoholic.addEventListener("change", (event) => {
     if (event.target.checked) {
       elements.nonAlcoholic.checked = false;
@@ -733,8 +1205,29 @@ function bindEvents() {
   if (elements.viewToggle) {
     elements.viewToggle.addEventListener("click", () => setViewMode(!state.showDeveloperDetails));
   }
+  if (elements.sourceList) {
+    elements.sourceList.addEventListener("click", handleSourceToggleClick);
+  }
+  if (elements.sourceToggleAll) {
+    elements.sourceToggleAll.addEventListener("click", () => resetSourceFilters());
+  }
+  if (elements.sourceCategoryList) {
+    elements.sourceCategoryList.addEventListener("click", handleSourceCategoryToggleClick);
+  }
+  if (elements.sourceCategoryToggleAll) {
+    elements.sourceCategoryToggleAll.addEventListener("click", () => resetSourceCategoryFilters());
+  }
+  if (elements.sourceCategorySearch) {
+    elements.sourceCategorySearch.addEventListener("input", handleSourceCategorySearch);
+  }
+  if (elements.sourceCategoryShowMore) {
+    elements.sourceCategoryShowMore.addEventListener("click", toggleSourceCategoryShowAll);
+  }
 }
 
 restoreViewMode();
+restoreSourceFilters();
+restoreSourceCategoryFilters();
+renderSourceCategoryList();
 bindEvents();
 loadDataset();
