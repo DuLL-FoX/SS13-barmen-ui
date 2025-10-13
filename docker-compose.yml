@@ -1,0 +1,16 @@
+services:
+  ss13-barmen-ui:
+    image: dullfox/ss13-bar-helper:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PORT=24322
+    ports:
+      - "24322:24322"
+    networks:
+      - wikinet
+
+networks:
+  wikinet:
+    external: true
