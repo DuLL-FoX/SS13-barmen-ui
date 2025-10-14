@@ -33,8 +33,8 @@ const OUTPUT_ROOT = path.resolve(PUBLIC_ROOT, "assets/drinks");
 const MANIFEST_PATH = path.resolve(OUTPUT_ROOT, "manifest.json");
 const LICENSE_INFO = {
   sourceRepository: "BlueMoon-Labs/BlueMoon-Station",
-  license: "AGPL-3.0-only",
-  attribution: "Drink sprites © BlueMoon-Labs/BlueMoon-Station (AGPL-3.0)."
+  license: "CC-BY-SA-3.0",
+  attribution: "Drink sprites © BlueMoon-Labs/BlueMoon-Station (CC BY-SA 3.0)."
 };
 
 const gifCodec = new GifCodec();
