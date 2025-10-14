@@ -1,3 +1,4 @@
+import compression from "compression";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,6 +11,7 @@ const publicDir = path.resolve(__dirname, "../public");
 export function createApp() {
   const app = express();
 
+  app.use(compression());
   app.use(express.json());
   app.use("/api", apiRouter);
   app.use(express.static(publicDir));

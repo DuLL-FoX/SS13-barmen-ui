@@ -5,6 +5,9 @@ import {
 } from "./state.js";
 import { elements } from "./dom.js";
 
+const RENDER_BATCH_SIZE = 30;
+let renderSequence = 0;
+
 export function sanitizeMessage(message) {
   if (!message) {
     return "No mixing notes recorded.";
@@ -527,28 +530,57 @@ export function renderRecipe(recipe) {
 }
 
 export function renderList(recipes) {
+  const sequence = ++renderSequence;
   elements.recipeList.innerHTML = "";
   if (!recipes.length) {
     elements.status.textContent = "No recipes found for the current filters.";
     elements.recipeList.classList.add("recipe-list--empty");
     return;
   }
+
   elements.recipeList.classList.remove("recipe-list--empty");
-  const fragment = document.createDocumentFragment();
-  recipes.forEach((recipe) => {
-    fragment.appendChild(renderRecipe(recipe));
-  });
-  elements.recipeList.appendChild(fragment);
-  const totalSources = state.sourceFilters.options.length;
-  const enabledSources = totalSources - state.sourceFilters.disabled.size;
-  const parts = [`Showing ${recipes.length} of ${state.recipes.length} recipe${recipes.length === 1 ? "" : "s"}.`];
-  if (totalSources > 0) {
-    parts.push(`${enabledSources}/${totalSources} sources enabled.`);
-  }
-  const totalCategories = state.sourceCategoryFilters.options.length;
-  if (totalCategories > 0) {
-    const enabledCategories = totalCategories - state.sourceCategoryFilters.disabled.size;
-    parts.push(`${enabledCategories}/${totalCategories} source categories visible.`);
-  }
-  elements.status.textContent = parts.join(" ");
+  elements.status.textContent = `Rendering ${recipes.length} recipes...`;
+
+  const total = recipes.length;
+  let index = 0;
+
+  const finalizeStatus = () => {
+    if (renderSequence !== sequence) {
+      return;
+    }
+    const totalSources = state.sourceFilters.options.length;
+    const enabledSources = totalSources - state.sourceFilters.disabled.size;
+    const parts = [`Showing ${total} of ${state.recipes.length} recipe${total === 1 ? "" : "s"}.`];
+    if (totalSources > 0) {
+      parts.push(`${enabledSources}/${totalSources} sources enabled.`);
+    }
+    const totalCategories = state.sourceCategoryFilters.options.length;
+    if (totalCategories > 0) {
+      const enabledCategories = totalCategories - state.sourceCategoryFilters.disabled.size;
+      parts.push(`${enabledCategories}/${totalCategories} source categories visible.`);
+    }
+    elements.status.textContent = parts.join(" ");
+  };
+
+  const renderNextBatch = () => {
+    if (renderSequence !== sequence) {
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    const end = Math.min(index + RENDER_BATCH_SIZE, total);
+    for (; index < end; index += 1) {
+      fragment.appendChild(renderRecipe(recipes[index]));
+    }
+    elements.recipeList.appendChild(fragment);
+
+    if (index < total) {
+      requestAnimationFrame(renderNextBatch);
+      return;
+    }
+
+    finalizeStatus();
+  };
+
+  requestAnimationFrame(renderNextBatch);
 }
