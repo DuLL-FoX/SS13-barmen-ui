@@ -92,6 +92,7 @@
       </header>
       <div class="recipe__media is-hidden">
         <img class="recipe__image" alt="" loading="lazy">
+        <span class="recipe__placeholder" aria-hidden="true"></span>
         <div class="recipe__media-info">
           <span class="recipe__media-label"></span>
           <code class="recipe__media-source"></code>
@@ -108,6 +109,14 @@
           <ul class="recipe__results"></ul>
         </section>
       </div>
+      <section class="recipe__catalysts is-hidden" aria-live="polite">
+        <div class="recipe__catalysts-header">
+          <h4>Catalysts</h4>
+          <span class="recipe__catalysts-count"></span>
+        </div>
+        <ul class="recipe__catalyst-list"></ul>
+        <p class="recipe__catalyst-hint">Catalysts are not consumed but must be present.</p>
+      </section>
       <div class="recipe__relations">
         <div class="recipe__relation" data-role="requires">
           <h4>Builds From</h4>

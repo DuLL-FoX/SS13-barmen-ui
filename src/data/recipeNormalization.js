@@ -79,8 +79,8 @@ const DEFAULT_TAGS = {
   nonAlcoholic: "Non Alcoholic"
 };
 
-export function classifyRecipe(recipe) {
-  const isAlcoholic = recipe.results.some((result) => result.path.includes("/ethanol"));
+export function classifyRecipe(recipe, { strength } = {}) {
+  let isAlcoholic = recipe.results.some((result) => result.path.includes("/ethanol"));
   const tags = new Set();
   tags.add(isAlcoholic ? DEFAULT_TAGS.alcoholic : DEFAULT_TAGS.nonAlcoholic);
   const lowerName = (recipe.name || "").toLowerCase();
@@ -101,6 +101,13 @@ export function classifyRecipe(recipe) {
   }
   if (lowerName.includes("shot") || lowerName.includes("bomb")) {
     tags.add("Shot");
+  }
+  if (strength != null && strength <= 0) {
+    if (isAlcoholic) {
+      isAlcoholic = false;
+      tags.delete(DEFAULT_TAGS.alcoholic);
+      tags.add(DEFAULT_TAGS.nonAlcoholic);
+    }
   }
   return {
     isAlcoholic,
@@ -177,11 +184,13 @@ export function selectPrimaryResults(recipe) {
 }
 
 export function normalizeRecipe(definition, reagentIndex, reagentSources) {
+  const rawName = definition.name ? stripByondFormatting(definition.name) : null;
+  const normalizedName = rawName && rawName.toLowerCase() === rawName ? toTitleCase(rawName) : rawName;
   const required = enrichComponent(definition.requiredReagents, reagentIndex, reagentSources);
   const catalysts = enrichComponent(definition.requiredCatalysts, reagentIndex, reagentSources);
   const results = enrichComponent(definition.results, reagentIndex, reagentSources);
   const strength = computeStrength({ results, requiredReagents: required }, reagentIndex);
-  const { isAlcoholic, tags } = classifyRecipe(definition);
+  const { isAlcoholic, tags } = classifyRecipe(definition, { strength });
   const tagSet = new Set(tags);
   if (strength != null) {
     if (strength >= 60) {
@@ -195,7 +204,7 @@ export function normalizeRecipe(definition, reagentIndex, reagentSources) {
   return {
     id: sanitizeIdentifier(definition.id) ?? definition.path,
     path: definition.path,
-    name: definition.name ?? deriveDisplayName(definition.path, reagentIndex),
+    name: normalizedName ?? deriveDisplayName(definition.path, reagentIndex),
     results,
     requiredReagents: required,
     requiredCatalysts: catalysts,

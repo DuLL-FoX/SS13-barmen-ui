@@ -8,6 +8,51 @@ import { elements } from "./dom.js";
 const RENDER_BATCH_SIZE = 30;
 let renderSequence = 0;
 
+function hashForHue(value) {
+  const text = value ? String(value) : "";
+  if (!text.length) {
+    return 0;
+  }
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash << 5) - hash + text.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function extractInitial(label) {
+  if (!label) {
+    return "?";
+  }
+  const match = label.trim().match(/[A-Za-z0-9]/);
+  return match ? match[0].toUpperCase() : "?";
+}
+
+function applyRecipePlaceholder(placeholder, recipe) {
+  if (!placeholder) {
+    return;
+  }
+  const seed = recipe.path || recipe.id || recipe.name || "";
+  const hash = hashForHue(seed);
+  const primaryHue = hash % 360;
+  const secondaryHue = (primaryHue + 45) % 360;
+  placeholder.classList.add("is-visible");
+  placeholder.textContent = extractInitial(recipe.name || seed || "");
+  placeholder.style.setProperty("--placeholder-hue-primary", String(primaryHue));
+  placeholder.style.setProperty("--placeholder-hue-secondary", String(secondaryHue));
+}
+
+function clearRecipePlaceholder(placeholder) {
+  if (!placeholder) {
+    return;
+  }
+  placeholder.classList.remove("is-visible");
+  placeholder.textContent = "";
+  placeholder.style.removeProperty("--placeholder-hue-primary");
+  placeholder.style.removeProperty("--placeholder-hue-secondary");
+}
+
 export function sanitizeMessage(message) {
   if (!message) {
     return "No mixing notes recorded.";
@@ -158,6 +203,88 @@ function createListItem(item) {
   }
 
   return li;
+}
+
+function createCatalystCard(item) {
+  const li = document.createElement("li");
+  li.className = "catalyst";
+
+  const quantity = document.createElement("span");
+  quantity.className = "catalyst__quantity";
+  quantity.textContent = formatQuantity(item.quantity);
+  li.appendChild(quantity);
+
+  const body = document.createElement("div");
+  body.className = "catalyst__body";
+
+  const name = document.createElement("span");
+  name.className = "catalyst__name";
+  name.textContent = item.displayName || item.name || item.path || "Unknown catalyst";
+  body.appendChild(name);
+
+  if (Array.isArray(item.sources) && item.sources.length) {
+    const sources = document.createElement("div");
+    sources.className = "catalyst__sources";
+    item.sources.forEach((source) => {
+      const badge = createSourceBadge(source);
+      if (badge) {
+        sources.appendChild(badge);
+      }
+    });
+    if (sources.childElementCount) {
+      body.appendChild(sources);
+    }
+  }
+
+  li.appendChild(body);
+  return li;
+}
+
+function renderCatalystSection(section, catalysts) {
+  if (!section) {
+    return;
+  }
+  const list = section.querySelector(".recipe__catalyst-list");
+  const count = section.querySelector(".recipe__catalysts-count");
+  if (!list) {
+    section.classList.add("is-hidden");
+    if (count) {
+      count.textContent = "";
+    }
+    return;
+  }
+
+  list.innerHTML = "";
+  if (!Array.isArray(catalysts) || !catalysts.length) {
+    section.classList.add("is-hidden");
+    if (count) {
+      count.textContent = "";
+    }
+    return;
+  }
+
+  catalysts.forEach((item) => {
+    if (!item) {
+      return;
+    }
+    list.appendChild(createCatalystCard(item));
+  });
+
+  if (!list.childElementCount) {
+    section.classList.add("is-hidden");
+    if (count) {
+      count.textContent = "";
+    }
+    return;
+  }
+
+  if (count) {
+    const total = list.childElementCount;
+    const label = total === 1 ? "Requires 1 catalyst" : `Requires ${total} catalysts`;
+    count.textContent = label;
+  }
+
+  section.classList.remove("is-hidden");
 }
 
 function badgeVariantForStrength(power) {
@@ -431,6 +558,7 @@ export function renderRecipe(recipe) {
   const media = node.querySelector(".recipe__media");
   if (media) {
     const image = media.querySelector(".recipe__image");
+    const placeholder = media.querySelector(".recipe__placeholder");
     const label = media.querySelector(".recipe__media-label");
     const source = media.querySelector(".recipe__media-source");
     if (recipe.icon?.src && image) {
@@ -439,9 +567,11 @@ export function renderRecipe(recipe) {
       const height = Number.isFinite(recipe.icon.height) ? recipe.icon.height : null;
       media.style.setProperty("--icon-width", width ? `${width}px` : "32px");
       media.style.setProperty("--icon-height", height ? `${height}px` : "32px");
+      image.classList.remove("is-hidden");
       image.src = recipe.icon.src;
       const altLabel = recipe.icon.label ?? recipe.name;
       image.alt = altLabel ? `${altLabel} sprite` : `${recipe.name} sprite`;
+      clearRecipePlaceholder(placeholder);
       if (label) {
         label.textContent = altLabel ?? "";
       }
@@ -465,11 +595,28 @@ export function renderRecipe(recipe) {
         }
         source.textContent = parts.join(" • ");
       }
+    } else if (placeholder) {
+      media.classList.remove("is-hidden");
+      media.style.setProperty("--icon-width", "48px");
+      media.style.setProperty("--icon-height", "48px");
+      if (image) {
+        image.classList.add("is-hidden");
+        image.removeAttribute("src");
+        image.alt = "";
+      }
+      applyRecipePlaceholder(placeholder, recipe);
+      if (label) {
+        label.textContent = recipe.name ?? "Sprite unavailable";
+      }
+      if (source) {
+        source.textContent = "Sprite unavailable";
+      }
     } else {
       media.classList.add("is-hidden");
       media.style.removeProperty("--icon-width");
       media.style.removeProperty("--icon-height");
       if (image) {
+        image.classList.add("is-hidden");
         image.removeAttribute("src");
         image.alt = "";
       }
@@ -479,6 +626,7 @@ export function renderRecipe(recipe) {
       if (source) {
         source.textContent = "";
       }
+      clearRecipePlaceholder(placeholder);
     }
   }
 
@@ -495,6 +643,8 @@ export function renderRecipe(recipe) {
   recipe.results.forEach((item) => {
     resultList.appendChild(createListItem(item));
   });
+
+  renderCatalystSection(node.querySelector(".recipe__catalysts"), recipe.requiredCatalysts);
 
   renderRelation(node.querySelector('.recipe__relation[data-role="requires"]'), recipe.requiredRecipes);
   renderRelation(node.querySelector('.recipe__relation[data-role="usedby"]'), recipe.dependentRecipes);

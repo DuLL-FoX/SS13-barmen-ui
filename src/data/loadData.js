@@ -47,6 +47,71 @@ function describeSource(url) {
   return "Core Station";
 }
 
+function isDrinkRecipe(recipe, reagentIndex) {
+  if (!recipe) {
+    return false;
+  }
+
+  const primaryResults = selectPrimaryResults(recipe);
+  if (!primaryResults.length) {
+    return false;
+  }
+
+  const normalizedPaths = primaryResults
+    .map((result) => (result.path ?? "").toLowerCase())
+    .filter((path) => path.length);
+
+  if (!normalizedPaths.length) {
+    return false;
+  }
+
+  const isExplicitlyNonDrink = normalizedPaths.every((path) =>
+    path.includes("/datum/reagent/drug/") ||
+    path.includes("/datum/reagent/medicine/") ||
+    path.includes("/datum/reagent/bio/")
+  );
+  if (isExplicitlyNonDrink) {
+    return false;
+  }
+
+  const hasDrinkIndicator = normalizedPaths.some((path) =>
+    path.includes("/datum/reagent/consumable/") ||
+    path.includes("/datum/reagent/food/") ||
+    path.includes("/datum/reagent/ethanol/") ||
+    path.includes("/datum/reagent/drink/") ||
+    path.includes("/obj/item/reagent_containers/food/drinks") ||
+    path.includes("/obj/item/food/drinks")
+  );
+  if (hasDrinkIndicator) {
+    return true;
+  }
+
+  if (reagentIndex instanceof Map) {
+    for (const result of primaryResults) {
+      const reagent = reagentIndex.get(result.path);
+      if (!reagent) {
+        continue;
+      }
+      const reagentPath = (reagent.path ?? "").toLowerCase();
+      if (
+        reagent.glassIcon ||
+        reagent.glassIconState ||
+        reagent.icon ||
+        reagent.iconState ||
+        reagent.boozePower != null ||
+        reagentPath.includes("drink") ||
+        reagentPath.includes("cocktail") ||
+        reagentPath.includes("juice") ||
+        reagentPath.includes("smoothie")
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 async function fetchRecipeDataset() {
   const recipeMap = new Map();
 
@@ -145,9 +210,9 @@ async function fetchRecipeDataset() {
   const supplySourceIndex = buildSupplySourceIndex(supplyPacks, containerIndex);
   const reagentSources = combineSourceIndexes(dispenserSourceIndex, vendorSourceIndex, supplySourceIndex);
 
-  const normalizedRecipes = recipeDefinitions.map((definition) =>
-    normalizeRecipe(definition, reagentIndex, reagentSources)
-  );
+  const normalizedRecipes = recipeDefinitions
+    .map((definition) => normalizeRecipe(definition, reagentIndex, reagentSources))
+    .filter((recipe) => isDrinkRecipe(recipe, reagentIndex));
 
   attachRecipeIcons(normalizedRecipes, containerIndex, iconManifest, reagentIndex);
   linkRecipeDependencies(normalizedRecipes);
