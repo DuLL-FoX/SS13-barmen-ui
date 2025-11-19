@@ -10,6 +10,25 @@ import {
 import { elements } from "./js/dom.js";
 import { renderList, sortRecipes, deriveSourceCategory } from "./js/renderers.js";
 
+function showToast(message, duration = 3000) {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `<span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(20px) scale(0.95)";
+    toast.addEventListener("transitionend", () => {
+      toast.remove();
+    });
+  }, duration);
+}
+
 function setViewMode(isDeveloperView) {
   state.showDeveloperDetails = Boolean(isDeveloperView);
   const mode = state.showDeveloperDetails ? "developer" : "standard";
@@ -434,7 +453,15 @@ function applyFilters() {
     filtered = filtered.filter((recipe) => !recipe.isAlcoholic);
   }
   const sorted = sortRecipes(filtered);
-  renderList(sorted);
+
+  const emptyState = document.getElementById("emptyState");
+  if (sorted.length === 0) {
+    if (emptyState) emptyState.hidden = false;
+    elements.recipeList.innerHTML = "";
+  } else {
+    if (emptyState) emptyState.hidden = true;
+    renderList(sorted);
+  }
 }
 
 function toggleSourceFilter(key) {
@@ -530,20 +557,25 @@ async function loadDataset() {
   const hasExistingData = state.recipes.length > 0;
   const currentFilters = hasExistingData
     ? {
-        search: elements.search.value,
-        ingredient: elements.ingredient.value,
-        alcoholic: elements.alcoholic.checked,
-        nonAlcoholic: elements.nonAlcoholic.checked,
-        sort: elements.sort ? elements.sort.value : "name-asc"
-      }
+      search: elements.search.value,
+      ingredient: elements.ingredient.value,
+      alcoholic: elements.alcoholic.checked,
+      nonAlcoholic: elements.nonAlcoholic.checked,
+      sort: elements.sort ? elements.sort.value : "name-asc"
+    }
     : {
-        search: "",
-        ingredient: "",
-        alcoholic: false,
-        nonAlcoholic: false,
-        sort: elements.sort ? elements.sort.value || "name-asc" : "name-asc"
-      };
+      search: "",
+      ingredient: "",
+      alcoholic: false,
+      nonAlcoholic: false,
+      sort: elements.sort ? elements.sort.value || "name-asc" : "name-asc"
+    };
   elements.status.textContent = "Loading recipes...";
+  elements.status.hidden = true;
+
+  const skeleton = document.getElementById("skeletonLoader");
+  if (skeleton) skeleton.setAttribute("aria-hidden", "false");
+
   elements.recipeList.innerHTML = "";
   try {
     const [recipeResponse, ingredientResponse] = await Promise.all([
@@ -585,7 +617,11 @@ async function loadDataset() {
     applyFilters();
   } catch (error) {
     console.error(error);
+    elements.status.hidden = false;
     elements.status.textContent = "Failed to load recipes. Please try again.";
+    showToast("Failed to load data. Please refresh.");
+  } finally {
+    if (skeleton) skeleton.setAttribute("aria-hidden", "true");
   }
 }
 
@@ -627,6 +663,71 @@ function bindEvents() {
   }
   if (elements.sourceCategoryShowMore) {
     elements.sourceCategoryShowMore.addEventListener("click", toggleSourceCategoryShowAll);
+  }
+
+  const mobileFilterToggle = document.getElementById("mobileFilterToggle");
+  const mobileFilterDrawer = document.getElementById("mobileFilterDrawer");
+  const mobileFilterClose = document.getElementById("mobileFilterClose");
+  const mobileFilterOverlay = mobileFilterDrawer ? mobileFilterDrawer.querySelector(".mobile-drawer__overlay") : null;
+  const mobileFilterContainer = document.getElementById("mobileFilterContainer");
+  const filtersSidebar = document.querySelector(".filters");
+
+  function openMobileDrawer() {
+    if (!mobileFilterDrawer) return;
+    if (filtersSidebar && mobileFilterContainer && !mobileFilterContainer.contains(filtersSidebar)) {
+      mobileFilterContainer.appendChild(filtersSidebar);
+    }
+    mobileFilterDrawer.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeMobileDrawer() {
+    if (!mobileFilterDrawer) return;
+    mobileFilterDrawer.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+
+    const layout = document.querySelector(".layout");
+    if (layout && filtersSidebar && !layout.contains(filtersSidebar)) {
+      layout.insertBefore(filtersSidebar, layout.firstChild);
+    }
+  }
+
+  if (mobileFilterToggle) {
+    mobileFilterToggle.addEventListener("click", openMobileDrawer);
+  }
+  if (mobileFilterClose) {
+    mobileFilterClose.addEventListener("click", closeMobileDrawer);
+  }
+  if (mobileFilterOverlay) {
+    mobileFilterOverlay.addEventListener("click", closeMobileDrawer);
+  }
+
+  const backToTopBtn = document.getElementById("backToTop");
+  if (backToTopBtn) {
+    window.addEventListener("scroll", () => {
+      if (window.scrollY > 300) {
+        backToTopBtn.hidden = false;
+      } else {
+        backToTopBtn.hidden = true;
+      }
+    }, { passive: true });
+
+    backToTopBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  const clearFiltersBtn = document.getElementById("clearFilters");
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener("click", () => {
+      elements.search.value = "";
+      elements.ingredient.value = "";
+      elements.alcoholic.checked = false;
+      elements.nonAlcoholic.checked = false;
+      resetSourceFilters();
+      resetSourceCategoryFilters();
+      applyFilters();
+    });
   }
 }
 
