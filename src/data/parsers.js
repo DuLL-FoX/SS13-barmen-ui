@@ -381,7 +381,7 @@ export function parseReagents(dmText) {
       current.icon = extractStringValue(trimmed) ?? extractPathValue(trimmed) ?? current.icon;
       continue;
     }
-    if (trimmed.startsWith("boozepwr")) {
+    if (trimmed.startsWith("boozepwr") || trimmed.startsWith("var/boozepwr")) {
       current.boozePower = extractNumericValue(trimmed) ?? current.boozePower;
     }
   }

@@ -81,6 +81,9 @@ const DEFAULT_TAGS = {
 
 export function classifyRecipe(recipe, { strength } = {}) {
   let isAlcoholic = recipe.results.some((result) => result.path.includes("/ethanol"));
+  if (strength > 0) {
+    isAlcoholic = true;
+  }
   const tags = new Set();
   tags.add(isAlcoholic ? DEFAULT_TAGS.alcoholic : DEFAULT_TAGS.nonAlcoholic);
   const lowerName = (recipe.name || "").toLowerCase();
