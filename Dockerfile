@@ -5,6 +5,7 @@ WORKDIR /usr/src/app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
+ARG CACHEBUST=1
 COPY . .
 
 RUN npm run extract:drinks
