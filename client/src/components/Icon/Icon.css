@@ -1,0 +1,58 @@
+
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.icon--fire {
+  color: #f97316;
+}
+
+.icon--cold {
+  color: #38bdf8;
+}
+
+.icon--pill {
+  color: #a78bfa;
+}
+
+.icon--skull {
+  color: #f87171;
+}
+
+.icon--sparkle {
+  color: #fbbf24;
+}
+
+.icon--heart {
+  color: #f472b6;
+}
+
+.icon--bolt {
+  color: #facc15;
+}
+
+.icon--ingredient {
+  color: var(--accent);
+}
+
+.icon--result {
+  color: var(--secondary);
+}
+
+.icon--catalyst {
+  color: var(--accent);
+}
+
+.icon--search {
+  color: var(--muted);
+}
+
+.icon--alert {
+  color: var(--error);
+}
+
+.icon--tree {
+  color: var(--secondary);
+}

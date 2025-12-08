@@ -1,0 +1,125 @@
+.mobile-only {
+  display: none;
+}
+
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  visibility: hidden;
+  transition: visibility 0.4s ease;
+}
+
+.mobile-drawer[aria-hidden="false"] {
+  visibility: visible;
+}
+
+.mobile-drawer__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.mobile-drawer[aria-hidden="false"] .mobile-drawer__overlay {
+  opacity: 1;
+}
+
+.mobile-drawer__content {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(360px, 90vw);
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(12, 15, 20, 0.98) 100%);
+  border-right: 1px solid var(--border);
+  padding: var(--space-lg);
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  overflow-y: auto;
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+  overscroll-behavior: contain;
+}
+
+.mobile-drawer[aria-hidden="false"] .mobile-drawer__content {
+  transform: translateX(0);
+}
+
+.mobile-drawer__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-drawer__header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.mobile-drawer__close {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--muted);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mobile-drawer__close:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.05);
+  transform: rotate(90deg);
+}
+
+.mobile-drawer .filters {
+  display: flex;
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  position: static;
+  max-height: none;
+  overflow-y: visible;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (max-width: 1024px) {
+  .mobile-only {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-drawer__content {
+    width: 100%;
+    padding: var(--space-md);
+    border-right: none;
+  }
+  
+  .mobile-drawer__header h2 {
+    font-size: 1.1rem;
+  }
+}

@@ -192,6 +192,123 @@ function extractNumericValue(line) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function humanizeConditionLabel(identifier) {
+  if (!identifier) {
+    return "special status";
+  }
+  const trimmed = identifier.trim();
+  if (!trimmed.length) {
+    return "special status";
+  }
+  if (/^trait_/i.test(trimmed)) {
+    const readable = trimmed.replace(/^trait_/i, "").replace(/_/g, " ").toLowerCase();
+    return readable.length ? `${readable}` : "special trait";
+  }
+  if (/^[A-Z0-9_]+$/.test(trimmed)) {
+    const readable = trimmed.replace(/_/g, " ").toLowerCase();
+    return readable.length ? readable : "special trait";
+  }
+  const segments = trimmed.split("/").filter(Boolean);
+  const tail = segments[segments.length - 1] ?? trimmed;
+  if (!tail.length) {
+    return "special status";
+  }
+  switch (tail.toLowerCase()) {
+    case "rev":
+    case "revolutionary":
+      return "revolutionary status";
+    case "cult":
+      return "cultist status";
+    default:
+      return `${tail.replace(/_/g, " ")} status`;
+  }
+}
+
+function detectEffectConditions(content) {
+  const conditions = new Set();
+  const antagRegex = /has_antag_datum\s*\(\s*(\/datum\/antagonist\/[A-Za-z0-9_\/]+)/gi;
+  let match;
+  while ((match = antagRegex.exec(content)) !== null) {
+    const label = humanizeConditionLabel(match[1]);
+    conditions.add(`Requires ${label}`);
+  }
+  const traitRegex = /has_trait\s*\(\s*[^,]+,\s*([A-Z0-9_\/]+)\s*\)/gi;
+  while ((match = traitRegex.exec(content)) !== null) {
+    const label = humanizeConditionLabel(match[1]);
+    conditions.add(`Requires ${label}`);
+  }
+  if (!conditions.size) {
+    return null;
+  }
+  return Array.from(conditions).join("; ");
+}
+
+function parseEffectsFromMobLife(lines) {
+  const effects = [];
+  const content = lines.join(" ");
+  const condition = detectEffectConditions(content);
+  
+  const healPatterns = [
+    { pattern: /heal_bodypart_damage\s*\(\s*([\d.]+)\s*,\s*([\d.]+)/i, type: "heal", 
+      format: (m) => ({ brute: parseFloat(m[1]), burn: parseFloat(m[2]) }) },
+    { pattern: /adjustBruteLoss\s*\(\s*-([\d.]+)/i, type: "heal_brute", 
+      format: (m) => ({ amount: parseFloat(m[1]) }) },
+    { pattern: /adjustFireLoss\s*\(\s*-([\d.]+)/i, type: "heal_burn", 
+      format: (m) => ({ amount: parseFloat(m[1]) }) },
+    { pattern: /adjustToxLoss\s*\(\s*-([\d.]+)/i, type: "heal_toxin", 
+      format: (m) => ({ amount: parseFloat(m[1]) }) },
+    { pattern: /adjustOxyLoss\s*\(\s*-([\d.]+)/i, type: "heal_oxygen", 
+      format: (m) => ({ amount: parseFloat(m[1]) }) },
+    { pattern: /adjustOrganLoss\s*\(\s*ORGAN_SLOT_LIVER\s*,\s*-([\d.]+)/i, type: "heal_liver", 
+      format: (m) => ({ amount: parseFloat(m[1]) }) },
+  ];
+  
+  for (const { pattern, type, format } of healPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      effects.push({ type, ...format(match), condition });
+    }
+  }
+  
+  if (content.includes("adjust_bodytemperature")) {
+    const tempMatch = content.match(/adjust_bodytemperature\s*\(\s*([-\d.]+)/i);
+    if (tempMatch) {
+      const value = parseFloat(tempMatch[1]);
+      effects.push({ 
+        type: value > 0 ? "warming" : "cooling", 
+        amount: Math.abs(value),
+        condition
+      });
+    }
+  }
+  
+  if (content.includes("drowsyness") && content.includes("max(0")) {
+    effects.push({ type: "reduces_drowsiness", condition });
+  }
+  
+  if (content.includes("dizziness") && content.includes("max(0")) {
+    effects.push({ type: "reduces_dizziness", condition });
+  }
+  
+  if (content.includes("AdjustSleeping") || content.includes("SetSleeping")) {
+    effects.push({ type: "prevents_sleep", condition });
+  }
+  
+  if (content.includes("Jitter")) {
+    effects.push({ type: "causes_jitter", condition });
+  }
+  
+  if (content.includes("set_drugginess")) {
+    effects.push({ type: "hallucinogenic", condition });
+  }
+  
+  if (content.includes("ismonkey") || content.includes("ishuman") && content.includes("job")) {
+    effects.push({ type: "species_conditional", condition });
+  }
+  
+  return effects;
+}
+
 export function parseChemicalReactions(dmText) {
   const lines = dmText.split(/\r?\n/);
   const recipes = [];
@@ -224,6 +341,7 @@ export function parseChemicalReactions(dmText) {
         mixSound: null,
         requiredTemp: null,
         requiredTempHigh: null,
+        isColdRecipe: false,
         requiredPressure: null,
         requiredPhMin: null,
         requiredPhMax: null,
@@ -279,6 +397,12 @@ export function parseChemicalReactions(dmText) {
       index += 1;
       continue;
     }
+    if (trimmed.startsWith("is_cold_recipe")) {
+      const value = stripLineComment(trimmed).split("=")[1]?.trim();
+      current.isColdRecipe = value === "1" || value === "TRUE" || value?.toLowerCase() === "true";
+      index += 1;
+      continue;
+    }
     if (trimmed.startsWith("required_temp")) {
       current.requiredTemp = extractNumericValue(trimmed);
       index += 1;
@@ -315,7 +439,11 @@ export function parseReagents(dmText) {
   const lines = dmText.split(/\r?\n/);
   const reagents = new Map();
   let current = null;
-  for (const rawLine of lines) {
+  let inOnMobLife = false;
+  let mobLifeContent = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
     const trimmed = rawLine.trim();
     if (!trimmed) {
       continue;
@@ -323,6 +451,26 @@ export function parseReagents(dmText) {
     if (trimmed.startsWith("//")) {
       continue;
     }
+    
+    if (trimmed.includes("/on_mob_life(")) {
+      inOnMobLife = true;
+      mobLifeContent = [];
+      continue;
+    }
+    
+    if (inOnMobLife) {
+      if (trimmed.startsWith("/datum/") || (trimmed.startsWith("/") && trimmed.includes("/proc/"))) {
+        if (current && mobLifeContent.length > 0) {
+          current.effects = parseEffectsFromMobLife(mobLifeContent);
+        }
+        inOnMobLife = false;
+        mobLifeContent = [];
+      } else {
+        mobLifeContent.push(trimmed);
+        continue;
+      }
+    }
+    
     if (trimmed.startsWith("/datum/reagent")) {
       if (current) {
         reagents.set(current.path, current);
@@ -338,7 +486,13 @@ export function parseReagents(dmText) {
         icon: null,
         iconState: null,
         glassIcon: null,
-        glassIconState: null
+        glassIconState: null,
+        quality: null,
+        addictionThreshold: null,
+        metabolizationRate: null,
+        overdoseThreshold: null,
+        specialEffects: [],
+        effects: []
       };
       continue;
     }
@@ -383,6 +537,29 @@ export function parseReagents(dmText) {
     }
     if (trimmed.startsWith("boozepwr") || trimmed.startsWith("var/boozepwr")) {
       current.boozePower = extractNumericValue(trimmed) ?? current.boozePower;
+      continue;
+    }
+    if (trimmed.startsWith("quality")) {
+      const value = extractPathValue(trimmed);
+      if (value) {
+        current.quality = value.replace(/^DRINK_/, "");
+      }
+      continue;
+    }
+    if (trimmed.startsWith("addiction_threshold")) {
+      current.addictionThreshold = extractNumericValue(trimmed);
+      continue;
+    }
+    if (trimmed.startsWith("metabolization_rate")) {
+      const value = extractPathValue(trimmed);
+      if (value && value !== "REAGENTS_METABOLISM") {
+        current.metabolizationRate = value;
+      }
+      continue;
+    }
+    if (trimmed.startsWith("overdose_threshold")) {
+      current.overdoseThreshold = extractNumericValue(trimmed);
+      continue;
     }
   }
   if (current) {

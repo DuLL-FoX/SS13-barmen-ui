@@ -1,0 +1,79 @@
+/* Badge Component - Clean, Minimal Design */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+}
+
+/* Accent - Primary highlight (cyan/blue) */
+.badge--accent {
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+/* Neutral - Muted, secondary info */
+.badge--neutral {
+  background: rgba(100, 116, 139, 0.1);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+/* Outline - Minimal, tertiary info */
+.badge--outline {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Soft - Indigo/purple, for quality/secondary actions */
+.badge--soft {
+  background: rgba(129, 140, 248, 0.1);
+  color: #a5b4fc;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+}
+
+/* Bold - Red/warning, for important info */
+.badge--bold {
+  background: rgba(248, 113, 113, 0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+/* Success - Green */
+.badge--success {
+  background: rgba(52, 211, 153, 0.1);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+/* Warning - Amber/yellow */
+.badge--warning {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+/* Hover states for interactive badges */
+.badge:hover {
+  filter: brightness(1.1);
+}
+
+/* Size variants via parent context */
+.recipe-card__meta .badge,
+.recipe-card__item-sources .badge,
+.recipe-card__catalyst-sources .badge {
+  font-size: 0.6rem;
+  padding: 0.2rem 0.45rem;
+  letter-spacing: 0.03em;
+}

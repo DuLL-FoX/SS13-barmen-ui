@@ -204,6 +204,99 @@ export function normalizeRecipe(definition, reagentIndex, reagentSources) {
       tagSet.add("Balanced");
     }
   }
+  if (definition.requiredTemp) {
+    if (definition.isColdRecipe) {
+      tagSet.add("Requires Cooling");
+    } else {
+      tagSet.add("Requires Heating");
+    }
+  }
+
+  const primaryResults = selectPrimaryResults({ ...definition, results });
+  const resultReagentDetails = primaryResults
+    .map((r) => reagentIndex.get(r.path))
+    .filter(Boolean);
+
+  const specialProperties = [];
+  for (const reagent of resultReagentDetails) {
+    if (reagent.addictionThreshold) {
+      specialProperties.push({ type: "addiction", value: reagent.addictionThreshold, label: `Addictive (${reagent.addictionThreshold}u threshold)` });
+    }
+    if (reagent.overdoseThreshold) {
+      specialProperties.push({ type: "overdose", value: reagent.overdoseThreshold, label: `Overdose at ${reagent.overdoseThreshold}u` });
+    }
+    if (reagent.quality) {
+      const qualityLabels = {
+        "NICE": "Good Quality",
+        "GOOD": "Great Quality",
+        "VERYGOOD": "Excellent Quality",
+        "FANTASTIC": "Fantastic Quality"
+      };
+      const qualityLabel = qualityLabels[reagent.quality] || reagent.quality;
+      specialProperties.push({ type: "quality", value: reagent.quality, label: qualityLabel });
+    }
+    
+    if (Array.isArray(reagent.effects) && reagent.effects.length > 0) {
+      for (const effect of reagent.effects) {
+        const effectCondition = typeof effect.condition === "string" && effect.condition.trim().length ? effect.condition.trim() : null;
+        switch (effect.type) {
+          case "heal":
+            if (effect.brute > 0 || effect.burn > 0) {
+              const parts = [];
+              if (effect.brute > 0) parts.push(`${effect.brute} brute`);
+              if (effect.burn > 0) parts.push(`${effect.burn} burn`);
+              specialProperties.push({ type: "healing", value: effect, label: `Heals ${parts.join(", ")}`, condition: effectCondition ?? undefined });
+            }
+            break;
+          case "heal_brute":
+            specialProperties.push({ type: "healing", value: effect.amount, label: `Heals ${effect.amount} brute`, condition: effectCondition ?? undefined });
+            break;
+          case "heal_burn":
+            specialProperties.push({ type: "healing", value: effect.amount, label: `Heals ${effect.amount} burn`, condition: effectCondition ?? undefined });
+            break;
+          case "heal_toxin":
+            specialProperties.push({ type: "healing", value: effect.amount, label: `Heals ${effect.amount} toxin`, condition: effectCondition ?? undefined });
+            break;
+          case "heal_oxygen":
+            specialProperties.push({ type: "healing", value: effect.amount, label: `Heals ${effect.amount} suffocation`, condition: effectCondition ?? undefined });
+            break;
+          case "heal_liver":
+            specialProperties.push({ type: "healing", value: effect.amount, label: `Heals liver (${effect.amount})`, condition: effectCondition ?? undefined });
+            break;
+          case "warming":
+            specialProperties.push({ type: "effect", value: "warming", label: "Warms body", condition: effectCondition ?? undefined });
+            break;
+          case "cooling":
+            specialProperties.push({ type: "effect", value: "cooling", label: "Cools body", condition: effectCondition ?? undefined });
+            break;
+          case "reduces_drowsiness":
+            specialProperties.push({ type: "effect", value: "alertness", label: "Reduces drowsiness", condition: effectCondition ?? undefined });
+            break;
+          case "reduces_dizziness":
+            specialProperties.push({ type: "effect", value: "stability", label: "Reduces dizziness", condition: effectCondition ?? undefined });
+            break;
+          case "prevents_sleep":
+            specialProperties.push({ type: "effect", value: "wakefulness", label: "Prevents sleep", condition: effectCondition ?? undefined });
+            break;
+          case "hallucinogenic":
+            specialProperties.push({ type: "effect", value: "hallucinogenic", label: "Hallucinogenic", condition: effectCondition ?? undefined });
+            break;
+          case "causes_jitter":
+            specialProperties.push({ type: "effect", value: "jitter", label: "Causes jitters", condition: effectCondition ?? undefined });
+            break;
+        }
+      }
+    }
+  }
+  
+  const seenLabels = new Set();
+  const uniqueProperties = specialProperties.filter(prop => {
+    const key = prop.condition ? `${prop.label}__${prop.condition}` : prop.label;
+    if (seenLabels.has(key)) return false;
+    seenLabels.add(key);
+    return true;
+  });
+
   return {
     id: sanitizeIdentifier(definition.id) ?? definition.path,
     path: definition.path,
@@ -215,9 +308,11 @@ export function normalizeRecipe(definition, reagentIndex, reagentSources) {
     mixSound: definition.mixSound,
     requiredTemp: definition.requiredTemp,
     requiredTempHigh: definition.requiredTempHigh,
+    isColdRecipe: definition.isColdRecipe ?? false,
     requiredPressure: definition.requiredPressure,
     requiredPhMin: definition.requiredPhMin,
     requiredPhMax: definition.requiredPhMax,
+    specialProperties: uniqueProperties,
     notes: definition.notes,
     isAlcoholic,
     tags: Array.from(tagSet),
@@ -226,6 +321,53 @@ export function normalizeRecipe(definition, reagentIndex, reagentSources) {
     requiredRecipes: [],
     dependentRecipes: []
   };
+}
+
+export function attachSpecialPropertySimilarities(recipes, { maxEntries = 4 } = {}) {
+  if (!Array.isArray(recipes) || !recipes.length) {
+    return;
+  }
+
+  const propertyIndex = new Map();
+  for (const recipe of recipes) {
+    if (!Array.isArray(recipe.specialProperties) || recipe.specialProperties.length === 0) {
+      continue;
+    }
+    for (const prop of recipe.specialProperties) {
+      if (!prop || !prop.label) {
+        continue;
+      }
+      const key = `${prop.type ?? "unknown"}::${prop.label}`;
+      if (!propertyIndex.has(key)) {
+        propertyIndex.set(key, []);
+      }
+      propertyIndex.get(key).push({
+        id: recipe.id,
+        name: recipe.name,
+        path: recipe.path
+      });
+    }
+  }
+
+  for (const recipe of recipes) {
+    if (!Array.isArray(recipe.specialProperties) || recipe.specialProperties.length === 0) {
+      continue;
+    }
+    for (const prop of recipe.specialProperties) {
+      if (!prop || !prop.label) {
+        continue;
+      }
+      const key = `${prop.type ?? "unknown"}::${prop.label}`;
+      const matches = (propertyIndex.get(key) ?? []).filter((entry) => entry.id !== recipe.id);
+      if (!matches.length) {
+        delete prop.similarRecipes;
+        delete prop.similarRecipeCount;
+        continue;
+      }
+      prop.similarRecipeCount = matches.length;
+      prop.similarRecipes = matches.slice(0, Math.max(1, maxEntries));
+    }
+  }
 }
 
 export function buildIngredientIndex(recipes, reagentIndex, reagentSources) {

@@ -1,8 +1,8 @@
-import { fetchDataset, filterRecipes } from "../services/datasetService.js";
+import { getRecipeDataset, filterRecipes } from "../data/loadData.js";
 
 export async function listRecipes(req, res, next) {
   try {
-    const dataset = await fetchDataset();
+    const dataset = await getRecipeDataset();
     const filtered = filterRecipes(dataset.recipes, {
       search: req.query.search,
       ingredient: req.query.ingredient,
@@ -24,7 +24,7 @@ export async function listRecipes(req, res, next) {
 
 export async function listIngredients(_req, res, next) {
   try {
-    const dataset = await fetchDataset();
+    const dataset = await getRecipeDataset();
     res.json({
       fetchedAt: dataset.fetchedAt,
       version: dataset.version ?? null,
@@ -38,7 +38,7 @@ export async function listIngredients(_req, res, next) {
 
 export async function listReagents(_req, res, next) {
   try {
-    const dataset = await fetchDataset();
+    const dataset = await getRecipeDataset();
     res.json({
       fetchedAt: dataset.fetchedAt,
       version: dataset.version ?? null,

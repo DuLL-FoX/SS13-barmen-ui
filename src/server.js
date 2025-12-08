@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { createApp } from "./app.js";
-import { preloadDataset } from "./services/datasetService.js";
+import { getRecipeDataset } from "./data/loadData.js";
 
 const PORT = process.env.PORT ? Number.parseInt(process.env.PORT, 10) : 3000;
 
@@ -14,7 +14,7 @@ async function startServer() {
   }
 
   try {
-    await preloadDataset();
+    await getRecipeDataset();
   } catch (error) {
     console.error("Failed to preload recipe dataset", error);
     process.exitCode = 1;
