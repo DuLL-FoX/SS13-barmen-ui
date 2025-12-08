@@ -169,9 +169,35 @@ function updateSourceCategoryControlsState() {
 }
 
 
-function updateSummary(total, fetchedAt) {
+function updateSummary(total, fetchedAt, version) {
   elements.recipeCount.textContent = total.toString();
   elements.fetchedAt.textContent = fetchedAt ? new Date(fetchedAt).toLocaleString() : "-";
+  
+  if (elements.gameVersion && version) {
+    if (version.commit) {
+      if (version.commitUrl) {
+        elements.gameVersion.innerHTML = `<a href="${version.commitUrl}" target="_blank" rel="noopener">${version.branch}@${version.commit}</a>`;
+      } else {
+        elements.gameVersion.textContent = `${version.branch}@${version.commit}`;
+      }
+    } else {
+      elements.gameVersion.textContent = version.branch ?? "-";
+    }
+  }
+  
+  if (elements.versionHint && version) {
+    const parts = [];
+    if (version.commitMessage) {
+      parts.push(version.commitMessage.length > 50 
+        ? version.commitMessage.substring(0, 50) + "..." 
+        : version.commitMessage);
+    }
+    if (version.commitDate) {
+      const date = new Date(version.commitDate);
+      parts.push(`Updated ${date.toLocaleDateString()}`);
+    }
+    elements.versionHint.textContent = parts.join(" · ");
+  }
 }
 
 function populateIngredients(options) {
@@ -592,11 +618,12 @@ async function loadDataset() {
     const ingredientData = await ingredientResponse.json();
     state.recipes = recipeData.recipes ?? [];
     state.fetchedAt = recipeData.fetchedAt;
+    state.version = recipeData.version ?? null;
     state.recipeLookup = new Map(state.recipes.map((recipe) => [recipe.id, recipe]));
     populateIngredients(ingredientData.ingredients ?? []);
     populateSources(state.recipes);
     populateSourceCategories(state.recipes);
-    updateSummary(state.recipes.length, state.fetchedAt);
+    updateSummary(state.recipes.length, state.fetchedAt, state.version);
     if (elements.sort) {
       const sortOptions = Array.from(elements.sort.options).map((option) => option.value);
       if (sortOptions.includes(currentFilters.sort)) {

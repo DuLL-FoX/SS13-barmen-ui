@@ -149,3 +149,28 @@ export async function safeCollectGithubDirectoryFiles(directories, extensions, d
     return [];
   }
 }
+
+export async function fetchLatestCommitInfo(owner, repo, branch = "master") {
+  const url = `https://api.github.com/repos/${owner}/${repo}/commits/${branch}`;
+  try {
+    const response = await fetch(url, {
+      headers: buildGithubHeaders({ Accept: "application/vnd.github.v3+json" })
+    });
+    if (!response.ok) {
+      console.warn(`Failed to fetch commit info: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    const data = await response.json();
+    return {
+      sha: data.sha ?? null,
+      shortSha: data.sha ? data.sha.substring(0, 7) : null,
+      message: data.commit?.message?.split("\n")[0] ?? null,
+      author: data.commit?.author?.name ?? null,
+      date: data.commit?.author?.date ?? null,
+      url: data.html_url ?? null
+    };
+  } catch (error) {
+    console.warn(`Error fetching commit info: ${error.message}`);
+    return null;
+  }
+}

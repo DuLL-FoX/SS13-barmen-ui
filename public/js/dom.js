@@ -6,6 +6,8 @@ export const elements = {
   sort: document.getElementById("sort"),
   recipeCount: document.getElementById("recipeCount"),
   fetchedAt: document.getElementById("fetchedAt"),
+  gameVersion: document.getElementById("gameVersion"),
+  versionHint: document.getElementById("versionHint"),
   status: document.getElementById("status"),
   recipeList: document.getElementById("recipeList"),
   template: document.getElementById("recipeTemplate"),

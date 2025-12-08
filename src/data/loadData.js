@@ -1,4 +1,4 @@
-import { RAW_SOURCES } from "./githubSources.js";
+import { RAW_SOURCES, SOURCE_BRANCH, REPO_OWNER, REPO_NAME } from "./githubSources.js";
 import {
   parseChemicalReactions,
   parseReagents,
@@ -8,7 +8,7 @@ import {
   parseVendingMachines,
   parseSupplyPacks
 } from "./parsers.js";
-import { fetchText, safeCollectGithubDirectoryFiles } from "./githubClient.js";
+import { fetchText, safeCollectGithubDirectoryFiles, fetchLatestCommitInfo } from "./githubClient.js";
 import { loadIconManifest, resolveIconAsset } from "./iconManifest.js";
 import {
   normalizeRecipe,
@@ -24,6 +24,15 @@ import {
   combineSourceIndexes
 } from "./sourceIndexes.js";
 import { mergeContainerMaps, attachRecipeIcons } from "./containerUtils.js";
+import {
+  hasLocalRepository,
+  getLocalVersionInfo,
+  readLocalFile,
+  listLocalFiles,
+  getLocalSourcePaths
+} from "./localLoader.js";
+
+const USE_LOCAL_DATA = process.env.USE_LOCAL_DATA === "true" || process.env.USE_LOCAL_DATA === "1";
 
 function mergeReagentMaps(...maps) {
   const combined = new Map();
@@ -37,12 +46,15 @@ function mergeReagentMaps(...maps) {
   return combined;
 }
 
-function describeSource(url) {
-  if (url.includes("/modular_splurt/")) {
+function describeSource(pathOrUrl) {
+  if (pathOrUrl.includes("modular_splurt") || pathOrUrl.includes("/modular_splurt/")) {
     return "Modular Splurt";
   }
-  if (url.includes("/modular_sand/")) {
+  if (pathOrUrl.includes("modular_sand") || pathOrUrl.includes("/modular_sand/")) {
     return "Modular Sand";
+  }
+  if (pathOrUrl.includes("modular_bluemoon") || pathOrUrl.includes("/modular_bluemoon/")) {
+    return "Modular BlueMoon";
   }
   return "Core Station";
 }
@@ -112,8 +124,157 @@ function isDrinkRecipe(recipe, reagentIndex) {
   return false;
 }
 
+async function fetchLocalRecipeDataset() {
+  const recipeMap = new Map();
+  const localSources = getLocalSourcePaths();
+
+  const version = await getLocalVersionInfo() ?? {
+    branch: "local",
+    commit: null,
+    commitFull: null,
+    repository: "local",
+    isLocal: true
+  };
+  version.isLocal = true;
+
+  console.log("Loading data from local BlueMoon-Station folder...");
+
+  const ingestLocalRecipeSources = async (filePaths, labelResolver) => {
+    for (const filePath of filePaths) {
+      const text = await readLocalFile(filePath);
+      if (!text) continue;
+      
+      const sourceLabel = typeof labelResolver === "function" ? labelResolver(filePath) : labelResolver;
+      const definitions = parseChemicalReactions(text);
+      for (const definition of definitions) {
+        if (!recipeMap.has(definition.path)) {
+          recipeMap.set(definition.path, {
+            ...definition,
+            source: sourceLabel
+          });
+        }
+      }
+    }
+  };
+
+  const recipeFilePaths = new Set(localSources.recipeFiles);
+  for (const folder of localSources.recipeFolders) {
+    const files = await listLocalFiles(folder, [".dm"]);
+    files.forEach((f) => recipeFilePaths.add(f));
+  }
+  await ingestLocalRecipeSources(Array.from(recipeFilePaths), describeSource);
+  await ingestLocalRecipeSources(localSources.synthRecipeFiles, () => "Synth Drinks");
+  const recipeDefinitions = Array.from(recipeMap.values());
+
+  const reagentFilePaths = new Set(localSources.reagentFiles);
+  for (const folder of localSources.reagentFolders) {
+    const files = await listLocalFiles(folder, [".dm"]);
+    files.forEach((f) => reagentFilePaths.add(f));
+  }
+  const reagentMaps = [];
+  for (const filePath of Array.from(reagentFilePaths).sort()) {
+    const text = await readLocalFile(filePath);
+    if (text) {
+      reagentMaps.push(parseReagents(text));
+    }
+  }
+  const reagentIndex = mergeReagentMaps(...reagentMaps);
+
+  const dispenserFilePaths = new Set(localSources.dispenserFiles);
+  for (const folder of localSources.dispenserFolders) {
+    const files = await listLocalFiles(folder, [".dm"]);
+    files.forEach((f) => dispenserFilePaths.add(f));
+  }
+  const dispenserMachines = [];
+  for (const filePath of Array.from(dispenserFilePaths).sort()) {
+    const text = await readLocalFile(filePath);
+    if (text) {
+      const chemDispensers = parseChemDispenserSources(text);
+      const structureDispensers = parseStructureReagentDispensers(text);
+      dispenserMachines.push(...chemDispensers, ...structureDispensers);
+    }
+  }
+
+  const containerFilePaths = new Set(localSources.drinkContainerFiles);
+  for (const folder of localSources.drinkContainerFolders) {
+    const files = await listLocalFiles(folder, [".dm"]);
+    files.forEach((f) => containerFilePaths.add(f));
+  }
+  const containerMaps = [];
+  for (const filePath of Array.from(containerFilePaths).sort()) {
+    const text = await readLocalFile(filePath);
+    if (text) {
+      containerMaps.push(parseDrinkContainers(text));
+    }
+  }
+  const containerIndex = mergeContainerMaps(...containerMaps);
+  const iconManifest = loadIconManifest();
+
+  const vendingFilePaths = new Set(localSources.vendingFiles);
+  for (const folder of localSources.vendingFolders) {
+    const files = await listLocalFiles(folder, [".dm"]);
+    files.forEach((f) => vendingFilePaths.add(f));
+  }
+  const vendingMachines = [];
+  for (const filePath of Array.from(vendingFilePaths).sort()) {
+    const text = await readLocalFile(filePath);
+    if (text) {
+      vendingMachines.push(...parseVendingMachines(text));
+    }
+  }
+
+  const supplyFilePaths = new Set(localSources.supplyPackFiles);
+  for (const folder of localSources.supplyPackFolders) {
+    const files = await listLocalFiles(folder, [".dm"]);
+    files.forEach((f) => supplyFilePaths.add(f));
+  }
+  const supplyPacks = [];
+  for (const filePath of Array.from(supplyFilePaths).sort()) {
+    const text = await readLocalFile(filePath);
+    if (text) {
+      supplyPacks.push(...parseSupplyPacks(text));
+    }
+  }
+
+  const dispenserSourceIndex = buildReagentSourceIndex(dispenserMachines);
+  const vendorSourceIndex = buildVendorSourceIndex(vendingMachines, containerIndex);
+  const supplySourceIndex = buildSupplySourceIndex(supplyPacks, containerIndex);
+  const reagentSources = combineSourceIndexes(dispenserSourceIndex, vendorSourceIndex, supplySourceIndex);
+
+  const normalizedRecipes = recipeDefinitions
+    .map((definition) => normalizeRecipe(definition, reagentIndex, reagentSources))
+    .filter((recipe) => isDrinkRecipe(recipe, reagentIndex));
+
+  attachRecipeIcons(normalizedRecipes, containerIndex, iconManifest, reagentIndex);
+  linkRecipeDependencies(normalizedRecipes);
+
+  const ingredients = buildIngredientIndex(normalizedRecipes, reagentIndex, reagentSources);
+  const reagents = buildReagentList(reagentIndex, reagentSources, iconManifest);
+
+  console.log(`Loaded ${normalizedRecipes.length} recipes from local folder`);
+
+  return {
+    fetchedAt: new Date().toISOString(),
+    version,
+    recipes: normalizedRecipes,
+    ingredients,
+    reagents
+  };
+}
+
 async function fetchRecipeDataset() {
   const recipeMap = new Map();
+
+  const commitInfo = await fetchLatestCommitInfo(REPO_OWNER, REPO_NAME, SOURCE_BRANCH);
+  const version = {
+    branch: SOURCE_BRANCH,
+    commit: commitInfo?.shortSha ?? null,
+    commitFull: commitInfo?.sha ?? null,
+    commitMessage: commitInfo?.message ?? null,
+    commitDate: commitInfo?.date ?? null,
+    commitUrl: commitInfo?.url ?? null,
+    repository: `${REPO_OWNER}/${REPO_NAME}`
+  };
 
   const ingestRecipeSources = async (urls, labelResolver) => {
     if (!Array.isArray(urls) || !urls.length) {
@@ -222,6 +383,7 @@ async function fetchRecipeDataset() {
 
   return {
     fetchedAt: new Date().toISOString(),
+    version,
     recipes: normalizedRecipes,
     ingredients,
     reagents
@@ -233,6 +395,22 @@ const CACHE_TTL_MS = 15 * 60 * 1000;
 let datasetCache = null;
 let cacheTimestamp = 0;
 let inflightRequest = null;
+let usingLocalData = false;
+
+async function resolveDatasetSource() {
+  if (USE_LOCAL_DATA) {
+    const hasLocal = await hasLocalRepository();
+    if (hasLocal) {
+      console.log("USE_LOCAL_DATA is enabled, loading from local BlueMoon-Station folder");
+      usingLocalData = true;
+      return fetchLocalRecipeDataset();
+    }
+    console.warn("USE_LOCAL_DATA is enabled but local BlueMoon-Station folder not found, falling back to GitHub");
+  }
+  
+  usingLocalData = false;
+  return fetchRecipeDataset();
+}
 
 export async function getRecipeDataset({ forceRefresh = false } = {}) {
   const now = Date.now();
@@ -242,7 +420,7 @@ export async function getRecipeDataset({ forceRefresh = false } = {}) {
   if (inflightRequest) {
     return inflightRequest;
   }
-  inflightRequest = fetchRecipeDataset()
+  inflightRequest = resolveDatasetSource()
     .then((dataset) => {
       datasetCache = dataset;
       cacheTimestamp = Date.now();
@@ -252,6 +430,10 @@ export async function getRecipeDataset({ forceRefresh = false } = {}) {
       inflightRequest = null;
     });
   return inflightRequest;
+}
+
+export function isUsingLocalData() {
+  return usingLocalData;
 }
 
 export function clearRecipeDatasetCache() {

@@ -12,6 +12,7 @@ export async function listRecipes(req, res, next) {
 
     res.json({
       fetchedAt: dataset.fetchedAt,
+      version: dataset.version ?? null,
       total: dataset.recipes.length,
       count: filtered.length,
       recipes: filtered
@@ -26,6 +27,7 @@ export async function listIngredients(_req, res, next) {
     const dataset = await fetchDataset();
     res.json({
       fetchedAt: dataset.fetchedAt,
+      version: dataset.version ?? null,
       count: dataset.ingredients.length,
       ingredients: dataset.ingredients
     });
@@ -39,6 +41,7 @@ export async function listReagents(_req, res, next) {
     const dataset = await fetchDataset();
     res.json({
       fetchedAt: dataset.fetchedAt,
+      version: dataset.version ?? null,
       count: dataset.reagents.length,
       reagents: dataset.reagents
     });

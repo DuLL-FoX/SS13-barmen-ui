@@ -321,6 +321,23 @@ select {
   color: var(--muted);
 }
 
+.stats dd a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.stats dd a:hover {
+  text-decoration: underline;
+}
+
+.version-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0 0;
+  opacity: 0.8;
+  font-style: italic;
+}
+
 .content {
   display: flex;
   flex-direction: column;
