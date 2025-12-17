@@ -131,3 +131,22 @@ export function sourceBadgeVariant(tier: string | null | undefined): 'bold' | 's
   }
   return 'neutral';
 }
+
+export type UmamiEventValue = string | number | boolean | null;
+export type UmamiEventProperties = Record<string, UmamiEventValue>;
+
+export function trackEvent(name: string, props?: UmamiEventProperties): void {
+  try {
+    const umami = window.umami;
+    if (!umami || typeof umami.track !== 'function') {
+      return;
+    }
+    if (props && Object.keys(props).length > 0) {
+      umami.track(name, props);
+    } else {
+      umami.track(name);
+    }
+  } catch {
+    // ignore
+  }
+}

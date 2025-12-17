@@ -1,4 +1,5 @@
 import { useApp } from '@/context/useApp';
+import { trackEvent } from '@/utils';
 import './Hero.css';
 
 export function Hero() {
@@ -9,6 +10,14 @@ export function Hero() {
     setShowDeveloperDetails,
     setMobileFilterOpen,
   } = useApp();
+
+  const submitSearch = () => {
+    const normalized = searchTerm.trim();
+    trackEvent('search_submit', {
+      query_length: normalized.length,
+      has_query: normalized.length > 0,
+    });
+  };
 
   return (
     <header className="hero">
@@ -21,12 +30,23 @@ export function Hero() {
             aria-label="Search recipes"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                submitSearch();
+              }
+            }}
+            onBlur={() => {
+              submitSearch();
+            }}
           />
           <button
             type="button"
             className="hero__toggle mobile-only"
             aria-label="Open filters"
-            onClick={() => setMobileFilterOpen(true)}
+            onClick={() => {
+              trackEvent('mobile_filters_open', { method: 'button' });
+              setMobileFilterOpen(true);
+            }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
@@ -37,7 +57,11 @@ export function Hero() {
             type="button"
             className="hero__toggle"
             aria-pressed={showDeveloperDetails}
-            onClick={() => setShowDeveloperDetails(!showDeveloperDetails)}
+            onClick={() => {
+              const next = !showDeveloperDetails;
+              trackEvent('view_mode_change', { mode: next ? 'developer' : 'standard' });
+              setShowDeveloperDetails(next);
+            }}
           >
             {showDeveloperDetails ? 'Hide developer details' : 'Show developer details'}
           </button>

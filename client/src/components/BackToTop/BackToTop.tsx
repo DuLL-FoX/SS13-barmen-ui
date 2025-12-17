@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { trackEvent } from '@/utils';
 import './BackToTop.css';
 
 export function BackToTop() {
@@ -14,6 +15,9 @@ export function BackToTop() {
   }, []);
 
   const scrollToTop = () => {
+    trackEvent('back_to_top', {
+      scroll_y: Math.round(window.scrollY),
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -18,6 +18,7 @@ import {
   badgeVariantForStrength,
   sourceBadgeVariant,
   buildSourceCategoryKey,
+  trackEvent,
 } from '@/utils';
 import './Recipe.css';
 
@@ -208,7 +209,18 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           <button
             type="button"
             className="recipe-card__relations-toggle"
-            onClick={() => setShowRelations(!showRelations)}
+            onClick={() => {
+              const next = !showRelations;
+              trackEvent('recipe_tree_toggle', {
+                expanded: next,
+                recipe_id: recipe.id ?? null,
+                recipe_path: recipe.path ?? null,
+                recipe_name: recipe.name,
+                required_count: recipe.requiredRecipes.length,
+                dependent_count: recipe.dependentRecipes.length,
+              });
+              setShowRelations(next);
+            }}
             aria-expanded={showRelations}
           >
             <Icon name={showRelations ? 'chevron-down' : 'chevron-right'} size={12} />

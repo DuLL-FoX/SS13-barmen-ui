@@ -1,5 +1,6 @@
 import { useApp } from '@/context/useApp';
 import { SOURCE_CATEGORY_VISIBLE_LIMIT } from '@/constants';
+import { trackEvent } from '@/utils';
 import './Filters.css';
 
 export function Filters() {
@@ -81,8 +82,14 @@ export function Filters() {
             type="checkbox"
             checked={alcoholicOnly}
             onChange={(e) => {
-              setAlcoholicOnly(e.target.checked);
-              if (e.target.checked) setNonAlcoholicOnly(false);
+              const checked = e.target.checked;
+              trackEvent('filter_toggle', {
+                filter: 'alcoholic_only',
+                checked,
+                clears_other: checked,
+              });
+              setAlcoholicOnly(checked);
+              if (checked) setNonAlcoholicOnly(false);
             }}
           />
           <span>Alcoholic only</span>
@@ -92,8 +99,14 @@ export function Filters() {
             type="checkbox"
             checked={nonAlcoholicOnly}
             onChange={(e) => {
-              setNonAlcoholicOnly(e.target.checked);
-              if (e.target.checked) setAlcoholicOnly(false);
+              const checked = e.target.checked;
+              trackEvent('filter_toggle', {
+                filter: 'non_alcoholic_only',
+                checked,
+                clears_other: checked,
+              });
+              setNonAlcoholicOnly(checked);
+              if (checked) setAlcoholicOnly(false);
             }}
           />
           <span>Non-alcoholic only</span>
@@ -104,7 +117,15 @@ export function Filters() {
         <select
           id="ingredient"
           value={selectedIngredient}
-          onChange={(e) => setSelectedIngredient(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            trackEvent('filter_change', {
+              filter: 'ingredient',
+              has_value: value.length > 0,
+              value,
+            });
+            setSelectedIngredient(value);
+          }}
         >
           <option value="">All ingredients</option>
           {ingredientOptions.map((opt) => (
@@ -119,7 +140,11 @@ export function Filters() {
         <select
           id="sort"
           value={sortMode}
-          onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
+          onChange={(e) => {
+            const value = e.target.value as typeof sortMode;
+            trackEvent('sort_change', { sort_mode: value });
+            setSortMode(value);
+          }}
         >
           <option value="name-asc">Name (A→Z)</option>
           <option value="strength-desc">Strength (High→Low)</option>
@@ -135,7 +160,13 @@ export function Filters() {
               type="button"
               className="filters__action"
               disabled={sourceFilters.disabled.size === 0}
-              onClick={resetSourceFilters}
+              onClick={() => {
+                trackEvent('sources_reset', {
+                  disabled_count: sourceFilters.disabled.size,
+                  total_sources: sourceFilters.options.length,
+                });
+                resetSourceFilters();
+              }}
             >
               Reset sources
             </button>
@@ -153,7 +184,16 @@ export function Filters() {
                 className="chip-toggle"
                 data-source-key={opt.key}
                 aria-pressed={!sourceFilters.disabled.has(opt.key)}
-                onClick={() => toggleSourceFilter(opt.key)}
+                onClick={() => {
+                  const currentlyEnabled = !sourceFilters.disabled.has(opt.key);
+                  trackEvent('source_toggle', {
+                    source_key: opt.key,
+                    source_label: opt.label,
+                    enabled: !currentlyEnabled,
+                    recipe_count: opt.count,
+                  });
+                  toggleSourceFilter(opt.key);
+                }}
               >
                 <span>{opt.label}</span>
                 <span className="chip-toggle__count">{opt.count}</span>
@@ -169,7 +209,13 @@ export function Filters() {
               type="button"
               className="filters__action"
               disabled={sourceCategoryFilters.disabled.size === 0}
-              onClick={resetSourceCategoryFilters}
+              onClick={() => {
+                trackEvent('source_categories_reset', {
+                  disabled_count: sourceCategoryFilters.disabled.size,
+                  total_categories: sourceCategoryFilters.options.length,
+                });
+                resetSourceCategoryFilters();
+              }}
             >
               Reset categories
             </button>
@@ -198,7 +244,16 @@ export function Filters() {
                 data-source-category-key={opt.key}
                 aria-pressed={!sourceCategoryFilters.disabled.has(opt.key)}
                 title={opt.label}
-                onClick={() => toggleSourceCategoryFilter(opt.key)}
+                onClick={() => {
+                  const currentlyEnabled = !sourceCategoryFilters.disabled.has(opt.key);
+                  trackEvent('source_category_toggle', {
+                    category_key: opt.key,
+                    category_label: opt.label,
+                    enabled: !currentlyEnabled,
+                    occurrence_count: opt.count,
+                  });
+                  toggleSourceCategoryFilter(opt.key);
+                }}
               >
                 <span>{opt.label}</span>
                 <span className="chip-toggle__count">{opt.count}</span>
@@ -211,7 +266,14 @@ export function Filters() {
             type="button"
             className="filters__action"
             aria-expanded={sourceCategoryFilters.showAll}
-            onClick={toggleSourceCategoryShowAll}
+            onClick={() => {
+              const next = !sourceCategoryFilters.showAll;
+              trackEvent('source_categories_show_all', {
+                show_all: next,
+                total_categories: categoryEntries.length,
+              });
+              toggleSourceCategoryShowAll();
+            }}
           >
             {sourceCategoryFilters.showAll ? 'Show less' : `Show all (${categoryEntries.length})`}
           </button>

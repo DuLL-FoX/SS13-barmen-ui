@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useApp } from '@/context/useApp';
 import { Filters } from '@/components/Filters';
+import { trackEvent } from '@/utils';
 import './MobileDrawer.css';
 
 export function MobileDrawer() {
@@ -19,7 +20,13 @@ export function MobileDrawer() {
 
   return (
     <div className="mobile-drawer" aria-hidden={!mobileFilterOpen}>
-      <div className="mobile-drawer__overlay" onClick={() => setMobileFilterOpen(false)} />
+      <div
+        className="mobile-drawer__overlay"
+        onClick={() => {
+          trackEvent('mobile_filters_close', { method: 'overlay' });
+          setMobileFilterOpen(false);
+        }}
+      />
       <div className="mobile-drawer__content">
         <header className="mobile-drawer__header">
           <h2>Filters</h2>
@@ -27,7 +34,10 @@ export function MobileDrawer() {
             type="button"
             className="mobile-drawer__close"
             aria-label="Close filters"
-            onClick={() => setMobileFilterOpen(false)}
+            onClick={() => {
+              trackEvent('mobile_filters_close', { method: 'button' });
+              setMobileFilterOpen(false);
+            }}
           >
             &times;
           </button>

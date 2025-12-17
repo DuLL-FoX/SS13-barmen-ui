@@ -1,6 +1,7 @@
 import { useApp } from '@/context/useApp';
 import { RecipeCard } from '@/components/Recipe';
 import { Icon } from '@/components/Icon';
+import { trackEvent } from '@/utils';
 import './RecipeList.css';
 
 export function RecipeList() {
@@ -55,7 +56,19 @@ export function RecipeList() {
         <p className="recipe-empty__text">
           Try adjusting your search or filters to find what you're looking for.
         </p>
-        <button type="button" className="recipe-empty__btn" onClick={clearAllFilters}>
+        <button
+          type="button"
+          className="recipe-empty__btn"
+          onClick={() => {
+            trackEvent('filters_clear_all', {
+              recipes_total: recipes.length,
+              recipes_visible: filteredRecipes.length,
+              sources_disabled: sourceFilters.disabled.size,
+              categories_disabled: sourceCategoryFilters.disabled.size,
+            });
+            clearAllFilters();
+          }}
+        >
           Clear all filters
         </button>
       </div>
