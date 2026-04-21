@@ -39,6 +39,30 @@ function getPropertyIcon(type: string): IconName {
   }
 }
 
+/** Deterministic 32-bit hash (FNV-1a) for fallback / short serial */
+function stableHash(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** Produce a deterministic decorative barcode pattern — alternating dark/light
+ *  bars with widths 1..4 px derived from the recipe seed. Purely visual. */
+function decorativeBarcode(seed: string): { width: number; dark: boolean }[] {
+  let state = stableHash(seed) || 1;
+  const bars: { width: number; dark: boolean }[] = [];
+  const N = 28;
+  for (let i = 0; i < N; i++) {
+    state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+    const w = 1 + (state % 4);
+    bars.push({ width: w, dark: i % 2 === 0 });
+  }
+  return bars;
+}
+
 interface RecipeCardProps {
   recipe: RecipeType;
 }
@@ -63,8 +87,97 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   const hasSpecialProps = recipe.specialProperties && recipe.specialProperties.length > 0;
   const hasTempRequirement = !!recipe.requiredTemp;
 
+  const strength = recipe.strength ?? 0;
+  const strengthTier: 'soft' | 'low' | 'med' | 'strong' | 'lethal' =
+    !recipe.isAlcoholic ? 'soft'
+      : strength < 40 ? 'low'
+      : strength < 60 ? 'med'
+      : strength < 80 ? 'strong'
+      : 'lethal';
+
+  const tempMode: 'cold' | 'hot' | 'none' =
+    hasTempRequirement ? (recipe.isColdRecipe ? 'cold' : 'hot') : 'none';
+
+  const sourceKey = (recipe.source ?? 'core')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '') || 'core';
+
+  const specialTypes = new Set((recipe.specialProperties ?? []).map((p) => p.type));
+  const hasOverdose = specialTypes.has('overdose');
+  const hasHealing = specialTypes.has('healing');
+  const hasAddiction = specialTypes.has('addiction');
+  const hasQuality = specialTypes.has('quality');
+  const hasEffect = specialTypes.has('effect');
+  const hasCatalyst = recipe.requiredCatalysts.length > 0;
+  const hasDependents = recipe.dependentRecipes.length >= 3;
+  const hasPhRange = recipe.requiredPhMin != null || recipe.requiredPhMax != null;
+
+  // Priority-ordered stamp list — take up to three most meaningful
+  type StampKey =
+    | 'overdose' | 'addictive' | 'rx' | 'flambe' | 'frozen' | 'chilled'
+    | 'lethal' | 'hazmat' | 'syn' | 'quality' | 'effect' | 'sire' | 'ph';
+  const stampCandidates: { key: StampKey; label: string; className: string }[] = [];
+  if (hasOverdose && strengthTier === 'lethal') {
+    stampCandidates.push({ key: 'hazmat', label: '☠ HAZMAT', className: 'recipe-card__stamp--hazmat' });
+  } else if (hasOverdose) {
+    stampCandidates.push({ key: 'overdose', label: 'OVERDOSE', className: 'recipe-card__stamp--overdose' });
+  } else if (strengthTier === 'lethal') {
+    stampCandidates.push({ key: 'lethal', label: 'LETHAL POUR', className: 'recipe-card__stamp--lethal' });
+  }
+  if (tempMode === 'hot' && recipe.isAlcoholic) {
+    stampCandidates.push({ key: 'flambe', label: '♨ FLAMBÉ', className: 'recipe-card__stamp--flambe' });
+  } else if (tempMode === 'cold' && recipe.isAlcoholic) {
+    stampCandidates.push({ key: 'frozen', label: '❆ ICE POUR', className: 'recipe-card__stamp--frozen' });
+  } else if (tempMode === 'cold') {
+    stampCandidates.push({ key: 'chilled', label: '❆ CHILLED', className: 'recipe-card__stamp--chilled' });
+  }
+  if (hasHealing) {
+    stampCandidates.push({ key: 'rx', label: 'RX', className: 'recipe-card__stamp--healing' });
+  }
+  if (hasAddiction) {
+    stampCandidates.push({ key: 'addictive', label: 'ADDICTIVE', className: 'recipe-card__stamp--addiction' });
+  }
+  if (hasQuality) {
+    stampCandidates.push({ key: 'quality', label: '★ QUALITY', className: 'recipe-card__stamp--quality' });
+  }
+  if (hasCatalyst) {
+    stampCandidates.push({ key: 'syn', label: '⚗ SYN', className: 'recipe-card__stamp--syn' });
+  }
+  if (hasDependents) {
+    stampCandidates.push({ key: 'sire', label: 'MOTHER MIX', className: 'recipe-card__stamp--sire' });
+  }
+  if (hasEffect && stampCandidates.length < 3) {
+    stampCandidates.push({ key: 'effect', label: '⚡ EFFECT', className: 'recipe-card__stamp--effect' });
+  }
+  if (hasPhRange && stampCandidates.length < 3) {
+    stampCandidates.push({ key: 'ph', label: 'pH CRITICAL', className: 'recipe-card__stamp--ph' });
+  }
+  const stamps = stampCandidates.slice(0, 3);
+
+  const barcodeSeed = recipe.path || recipe.id || recipe.name || 'recipe';
+  const barcodeBars = decorativeBarcode(barcodeSeed);
+  const serial = (stableHash(barcodeSeed) % 9000) + 1000;
+
   return (
-    <article className="recipe-card" data-view={showDeveloperDetails ? 'developer' : 'standard'}>
+    <article
+      className="recipe-card"
+      data-view={showDeveloperDetails ? 'developer' : 'standard'}
+      data-tier={strengthTier}
+      data-source={sourceKey}
+      data-temp={tempMode}
+      data-alcoholic={recipe.isAlcoholic ? 'true' : 'false'}
+      data-overdose={hasOverdose ? 'true' : 'false'}
+      data-healing={hasHealing ? 'true' : 'false'}
+      data-addiction={hasAddiction ? 'true' : 'false'}
+      style={{ ['--strength-pct' as string]: `${Math.max(0, Math.min(100, strength))}%` }}
+    >
+      <div className="recipe-card__paper" aria-hidden="true" />
+      {recipe.isAlcoholic && (
+        <div className="recipe-card__strength-bar" aria-hidden="true">
+          <span className="recipe-card__strength-bar-fill" />
+          <span className="recipe-card__strength-bar-value">{strength}%</span>
+        </div>
+      )}
       <header className="recipe-card__header">
         <div className="recipe-card__icon-wrap">
           {hasIcon ? (
@@ -271,6 +384,30 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           </div>
         </footer>
       )}
+
+      <div className="recipe-card__footer">
+        <div className="recipe-card__barcode" aria-hidden="true">
+          <div className="recipe-card__barcode-bars">
+            {barcodeBars.map((b: { width: number; dark: boolean }, i: number) => (
+              <span
+                key={i}
+                className={`recipe-card__barcode-bar${b.dark ? ' recipe-card__barcode-bar--dark' : ''}`}
+                style={{ width: `${b.width}px` }}
+              />
+            ))}
+          </div>
+          <div className="recipe-card__barcode-serial">№ {serial}</div>
+        </div>
+        {stamps.length > 0 && (
+          <div className="recipe-card__stamps" aria-hidden="true">
+            {stamps.map((s) => (
+              <span key={s.key} className={`recipe-card__stamp ${s.className}`}>
+                {s.label}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </article>
   );
 }

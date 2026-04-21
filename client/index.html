@@ -4,28 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0a0c10" />
+    <meta name="theme-color" content="#0a0405" />
     <meta name="color-scheme" content="dark" />
-    <meta name="description" content="SS13 Bartender Companion - A helpful tool for bartenders in Space Station 13. Browse drink recipes, ingredients, and more." />
-    <meta name="keywords" content="SS13, Space Station 13, bartender, drinks, recipes, cocktails" />
+    <meta name="description" content="The Orbital & Bar — SS13 Bartender Companion. Retro-futurist cocktail lounge terminal. Browse drink recipes, reagents, and more." />
+    <meta name="keywords" content="SS13, Space Station 13, bartender, drinks, recipes, cocktails, Orbital Bar" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Limelight&family=Poiret+One&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <script defer src="https://analytics.someanotherboringdomain.com/script.js" data-website-id="e2628925-efbf-4456-a994-0db5acb66551"></script>
-    <title>SS13 Bartender Companion</title>
+    <title>The Orbital &amp; Bar — SS13 Bartender Companion</title>
     <style>
       /* Critical CSS to prevent flash */
-      html { 
-        background: #0a0c10;
+      html {
+        background: #0a0405;
         scroll-behavior: smooth;
       }
-      body { 
-        margin: 0; 
-        min-height: 100vh; 
+      body {
+        margin: 0;
+        min-height: 100vh;
         min-height: 100dvh;
-        background: 
-          radial-gradient(ellipse 100% 60% at 50% -30%, rgba(56, 189, 248, 0.1), transparent 60%),
-          #0a0c10;
+        background:
+          radial-gradient(ellipse at 50% 0%, rgba(255, 180, 84, 0.08), transparent 55%),
+          linear-gradient(180deg, #0e0509 0%, #14070b 40%, #0a0405 100%);
+        color: #f4e8d0;
+        font-family: 'VT323', monospace;
       }
       #root {
         min-height: 100vh;
@@ -35,6 +37,7 @@
   </head>
   <body>
     <div id="root"></div>
+    <div class="grain" aria-hidden="true"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

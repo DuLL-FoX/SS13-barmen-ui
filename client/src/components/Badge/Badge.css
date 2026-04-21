@@ -1,79 +1,93 @@
-/* Badge Component - Clean, Minimal Design */
+/* Badge — "stamp" style that works on paper-ticket cards and dark shelf */
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: var(--radius-full);
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 600;
-  white-space: nowrap;
-  line-height: 1.2;
-  transition: all 0.15s ease;
-}
-
-/* Accent - Primary highlight (cyan/blue) */
-.badge--accent {
-  background: rgba(56, 189, 248, 0.12);
-  color: #7dd3fc;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-}
-
-/* Neutral - Muted, secondary info */
-.badge--neutral {
-  background: rgba(100, 116, 139, 0.1);
-  color: #94a3b8;
-  border: 1px solid rgba(100, 116, 139, 0.2);
-}
-
-/* Outline - Minimal, tertiary info */
-.badge--outline {
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1.5px solid;
   background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.25;
+  border-radius: 0;
+  transition: filter var(--transition-fast);
 }
 
-/* Soft - Indigo/purple, for quality/secondary actions */
+/* Accent — ALCOHOLIC stamp (rose/oxblood) */
+.badge--accent {
+  color: #a61e3a;
+  border-color: #a61e3a;
+  background: rgba(166, 30, 58, 0.06);
+}
+
+/* Neutral — SOFT / non-alcoholic */
+.badge--neutral {
+  color: #1d4a3a;
+  border-color: #1d4a3a;
+  background: rgba(29, 74, 58, 0.06);
+}
+
+/* Outline — source / pack tag */
+.badge--outline {
+  color: #3a2416;
+  border-color: #3a2416;
+  background: transparent;
+}
+
+/* Soft — ingredient source: neutral brass */
 .badge--soft {
-  background: rgba(129, 140, 248, 0.1);
-  color: #a5b4fc;
-  border: 1px solid rgba(129, 140, 248, 0.2);
+  color: #7a5838;
+  border-color: rgba(122, 88, 56, 0.55);
+  background: rgba(200, 148, 102, 0.08);
 }
 
-/* Bold - Red/warning, for important info */
+/* Bold — strong pour warning */
 .badge--bold {
-  background: rgba(248, 113, 113, 0.1);
-  color: #fca5a5;
-  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: #8a3a00;
+  border-color: #8a3a00;
+  background: rgba(138, 58, 0, 0.06);
 }
 
-/* Success - Green */
+/* Success — catalyst / green */
 .badge--success {
-  background: rgba(52, 211, 153, 0.1);
-  color: #6ee7b7;
-  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: #1d4a3a;
+  border-color: #1d4a3a;
+  background: rgba(29, 74, 58, 0.08);
 }
 
-/* Warning - Amber/yellow */
+/* Warning — amber */
 .badge--warning {
-  background: rgba(251, 191, 36, 0.1);
-  color: #fcd34d;
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  color: #8a5a00;
+  border-color: #8a5a00;
+  background: rgba(255, 180, 84, 0.12);
 }
 
-/* Hover states for interactive badges */
 .badge:hover {
-  filter: brightness(1.1);
+  filter: brightness(0.95);
 }
 
 /* Size variants via parent context */
-.recipe-card__meta .badge,
+.recipe-card__meta .badge {
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
 .recipe-card__item-sources .badge,
 .recipe-card__catalyst-sources .badge {
-  font-size: 0.6rem;
-  padding: 0.2rem 0.45rem;
-  letter-spacing: 0.03em;
+  font-size: 10px;
+  padding: 2px 6px;
+  letter-spacing: 0.1em;
+}
+
+/* Dark context (e.g. inside developer panel, shelf meta) */
+.recipe-card__dev-meta .badge,
+.dev-panel .badge {
+  color: var(--cyan);
+  border-color: rgba(92, 225, 230, 0.5);
+  background: rgba(92, 225, 230, 0.08);
 }

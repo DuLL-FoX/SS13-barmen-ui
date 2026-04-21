@@ -281,6 +281,33 @@ export function Filters() {
       </section>
 
       <section className="filters__group">
+        <details className="stamp-legend">
+          <summary className="stamp-legend__summary">
+            <span>Stamp Legend</span>
+            <span className="stamp-legend__count">12</span>
+          </summary>
+          <p className="filters__hint stamp-legend__hint">
+            Each receipt is over-stamped with what's notable. Hover a card to make them pop.
+          </p>
+          <ul className="stamp-legend__list">
+            <li><span className="stamp-legend__chip stamp-legend__chip--hazmat">☠ HAZMAT</span><span className="stamp-legend__desc">Lethal + overdose risk.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--overdose">OVERDOSE</span><span className="stamp-legend__desc">Can push past OD threshold.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--lethal">LETHAL POUR</span><span className="stamp-legend__desc">Booze power 80%+.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--flambe">♨ FLAMBÉ</span><span className="stamp-legend__desc">Alcoholic, served hot.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--frozen">❆ ICE POUR</span><span className="stamp-legend__desc">Alcoholic, served cold.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--chilled">❆ CHILLED</span><span className="stamp-legend__desc">Soft drink, served cold.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--healing">RX</span><span className="stamp-legend__desc">Has a healing effect.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--addiction">ADDICTIVE</span><span className="stamp-legend__desc">Builds addiction.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--quality">★ QUALITY</span><span className="stamp-legend__desc">Quality-grade mix.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--syn">⚗ SYN</span><span className="stamp-legend__desc">Needs catalysts.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--sire">MOTHER MIX</span><span className="stamp-legend__desc">Base for 3+ drinks.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--effect">⚡ EFFECT</span><span className="stamp-legend__desc">Has a special effect.</span></li>
+            <li><span className="stamp-legend__chip stamp-legend__chip--ph">pH CRITICAL</span><span className="stamp-legend__desc">Narrow pH window.</span></li>
+          </ul>
+        </details>
+      </section>
+
+      <section className="filters__group">
         <div className="filters__header">
           <h2>Dataset</h2>
         </div>

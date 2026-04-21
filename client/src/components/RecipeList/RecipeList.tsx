@@ -50,11 +50,12 @@ export function RecipeList() {
     return (
       <div className="recipe-empty">
         <div className="recipe-empty__visual">
-          <Icon name="search" size={48} className="recipe-empty__icon" />
+          <Icon name="search" size={36} className="recipe-empty__icon" />
         </div>
-        <h3 className="recipe-empty__title">No recipes found</h3>
+        <h3 className="recipe-empty__title">Shelf Empty</h3>
         <p className="recipe-empty__text">
-          Try adjusting your search or filters to find what you're looking for.
+          No drinks match those filters, chief.<br />
+          Try a different key ingredient or reset the menu.
         </p>
         <button
           type="button"
@@ -69,7 +70,7 @@ export function RecipeList() {
             clearAllFilters();
           }}
         >
-          Clear all filters
+          ⟲ Reset Filters
         </button>
       </div>
     );
@@ -85,7 +86,7 @@ export function RecipeList() {
       <div className="recipe-status">
         <span className="recipe-status__count">
           <strong>{filteredRecipes.length}</strong>
-          <span> of {recipes.length} recipes</span>
+          <span>on the rail · <strong>{recipes.length}</strong> in the book</span>
         </span>
         {totalSources > 0 && (
           <span className="recipe-status__filter">

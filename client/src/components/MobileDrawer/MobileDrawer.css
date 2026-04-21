@@ -1,3 +1,6 @@
+/* =========================================================
+   MOBILE DRAWER — deco menu drawer
+   ========================================================= */
 .mobile-only {
   display: none;
 }
@@ -8,7 +11,7 @@
   z-index: 100;
   display: flex;
   visibility: hidden;
-  transition: visibility 0.4s ease;
+  transition: visibility 0.35s ease;
 }
 
 .mobile-drawer[aria-hidden="false"] {
@@ -18,11 +21,11 @@
 .mobile-drawer__overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 4, 6, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease;
 }
 
 .mobile-drawer[aria-hidden="false"] .mobile-drawer__overlay {
@@ -34,17 +37,23 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: min(360px, 90vw);
-  background: linear-gradient(180deg, var(--panel) 0%, rgba(12, 15, 20, 0.98) 100%);
-  border-right: 1px solid var(--border);
-  padding: var(--space-lg);
+  width: min(360px, 92vw);
+  background:
+    linear-gradient(180deg, rgba(26, 10, 14, 0.97), rgba(10, 3, 5, 1)),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 6px,
+      rgba(200, 148, 102, 0.04) 6px 7px
+    );
+  border-right: 1px solid var(--brass);
+  padding: 16px 14px 20px;
   transform: translateX(-100%);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: 10px;
   overflow-y: auto;
-  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 20px 0 48px rgba(0, 0, 0, 0.7);
   overscroll-behavior: contain;
 }
 
@@ -56,54 +65,54 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: var(--space-md);
-  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(200, 148, 102, 0.35);
+  margin-bottom: 4px;
 }
 
 .mobile-drawer__header h2 {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  color: #fff0f3;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px var(--neon-rose), 0 0 18px var(--neon-rose);
 }
 
 .mobile-drawer__close {
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--muted);
-  width: 44px;
-  height: 44px;
+  border: 1px solid var(--neon-rose);
+  color: var(--neon-rose);
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.75rem;
+  font-family: var(--font-pixel);
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  padding: 0;
   transition: all var(--transition-fast);
 }
 
 .mobile-drawer__close:hover {
-  color: var(--text);
-  border-color: var(--border-hover);
-  background: rgba(255, 255, 255, 0.05);
-  transform: rotate(90deg);
+  color: #fff;
+  background: rgba(255, 77, 109, 0.12);
+  box-shadow: 0 0 10px rgba(255, 77, 109, 0.4);
 }
 
+/* Nested Filters panel is presented "flat" inside the drawer */
 .mobile-drawer .filters {
   display: flex;
   background: transparent;
   border: none;
-  padding: 0;
   box-shadow: none;
+  padding: 0;
   position: static;
   max-height: none;
   overflow-y: visible;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 @media (max-width: 1024px) {
@@ -115,11 +124,11 @@
 @media (max-width: 480px) {
   .mobile-drawer__content {
     width: 100%;
-    padding: var(--space-md);
+    padding: 14px 12px 18px;
     border-right: none;
   }
-  
+
   .mobile-drawer__header h2 {
-    font-size: 1.1rem;
+    font-size: 18px;
   }
 }
