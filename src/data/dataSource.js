@@ -203,7 +203,8 @@ export async function readGitHeadInfo(repoPath) {
 
 function tryGitCommand(args, cwd) {
   try {
-    return execSync(`git ${args}`, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    // The mounted checkout is owned by another user; without safe.directory git refuses to read it.
+    return execSync(`git -c safe.directory=* ${args}`, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
     return null;
   }

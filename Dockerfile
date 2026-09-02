@@ -2,6 +2,9 @@ FROM node:22-alpine
 
 WORKDIR /usr/src/app
 
+# git lets the server read the real commit date/message of the mounted game checkout
+RUN apk add --no-cache git
+
 COPY package.json package-lock.json ./
 
 COPY client/package.json client/package-lock.json ./client/
