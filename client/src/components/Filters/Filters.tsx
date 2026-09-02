@@ -73,9 +73,13 @@ export function Filters() {
 
   return (
     <aside className="filters">
+      <div className="filters__masthead">
+        <h2 className="filters__brand">The Menu</h2>
+        <p className="filters__tagline">Tune the list</p>
+      </div>
       <section className="filters__group">
         <div className="filters__header">
-          <h2>Quick Filters</h2>
+          <h3>Quick Filters</h3>
         </div>
         <label className="toggle">
           <input
@@ -154,7 +158,7 @@ export function Filters() {
 
       <section className="filters__group">
         <div className="filters__header">
-          <h2>Sources</h2>
+          <h3>Sources</h3>
           <div className="filters__actions">
             <button
               type="button"
@@ -203,7 +207,7 @@ export function Filters() {
         </div>
 
         <div className="filters__subheader">
-          <h3>Ingredient availability</h3>
+          <h4>Ingredient availability</h4>
           <div className="filters__actions">
             <button
               type="button"
@@ -309,7 +313,7 @@ export function Filters() {
 
       <section className="filters__group">
         <div className="filters__header">
-          <h2>Dataset</h2>
+          <h3>Dataset</h3>
         </div>
         <dl className="stats">
           <div>

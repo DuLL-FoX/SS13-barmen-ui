@@ -1,134 +1,95 @@
 /* =========================================================
-   RECIPE LIST — wood-plank shelf holding ticket cards
+   RECIPE LIST — status strip + plain card grid
+   House-lights revision: the ink page is the shelf.
    ========================================================= */
 .recipe-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
-/* Shelf meta strip */
+/* ---------- status strip ---------- */
 .recipe-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 8px 14px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  color: var(--brass);
-  text-transform: uppercase;
-  border-top: 1px solid var(--brass-lo);
-  border-bottom: 1px solid var(--brass-lo);
-  background: rgba(10, 3, 5, 0.35);
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-1);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--bone-2);
 }
 
 .recipe-status__count {
   display: inline-flex;
   align-items: baseline;
   gap: 0.4em;
-  color: var(--brass);
-}
-
-.recipe-status__count::before {
-  content: '◈';
-  color: var(--brass-hi);
-  margin-right: 3px;
+  margin-right: auto;
 }
 
 .recipe-status__count strong {
-  font-family: var(--font-pixel);
-  font-size: 22px;
+  font-size: var(--fs-lg);
+  font-weight: 600;
   color: var(--bone);
-  letter-spacing: 0.02em;
-  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .recipe-status__filter {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  color: var(--bone);
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+  color: var(--bone-2);
   padding: 3px 10px;
-  background: rgba(200, 148, 102, 0.08);
-  border: 1px solid rgba(200, 148, 102, 0.3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
-/* The shelf — a wood plank with ticket cards resting on it */
+/* ---------- grid ---------- */
 .recipe-grid {
   list-style: none;
-  padding: 18px 18px 24px;
   margin: 0;
+  padding: 0;
   display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #2a1a10 0 1px,
-      #3a2416 1px 2px,
-      #2a1a10 2px 3px,
-      #40291a 3px 5px
-    ),
-    linear-gradient(180deg, #3a2416 0%, #1f1108 100%);
-  border-top: 2px solid var(--brass);
-  border-bottom: 4px solid #0a0504;
-  border-left: 1px solid var(--brass-lo);
-  border-right: 1px solid var(--brass-lo);
-  box-shadow:
-    inset 0 1px 0 rgba(232, 190, 142, 0.25),
-    0 6px 10px rgba(0, 0, 0, 0.55),
-    0 14px 30px rgba(0, 0, 0, 0.45);
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 364px), 1fr));
+  background: none;
+  border: none;
 }
 
 .recipe-grid--loading {
   pointer-events: none;
 }
 
-/* Skeleton — faint paper ticket placeholders */
+/* ---------- skeleton (static) ---------- */
 .recipe-skeleton {
-  background: rgba(244, 232, 208, 0.2);
-  border: 1px dashed rgba(200, 148, 102, 0.4);
-  padding: var(--space-lg);
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-4);
   min-height: 200px;
-  position: relative;
-  overflow: hidden;
-}
-
-.recipe-skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.07) 50%,
-    transparent
-  );
-  transform: translateX(-100%);
-  animation: shimmer 1.6s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
 }
 
 .recipe-skeleton__header {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-md);
+  gap: var(--space-3);
 }
 
 .recipe-skeleton__icon {
   width: 48px;
   height: 48px;
-  background: rgba(42, 31, 18, 0.2);
-  border: 1px solid rgba(200, 148, 102, 0.25);
+  background: var(--ink-3);
+  border-radius: var(--radius);
   flex-shrink: 0;
 }
 
@@ -136,232 +97,161 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .recipe-skeleton__title {
-  height: 20px;
-  width: 68%;
-  background: rgba(42, 31, 18, 0.18);
+  height: 18px;
+  width: 64%;
+  background: var(--ink-3);
+  border-radius: var(--radius);
 }
 
 .recipe-skeleton__badges {
   height: 14px;
-  width: 50%;
-  background: rgba(42, 31, 18, 0.12);
+  width: 44%;
+  background: var(--ink-3);
+  border-radius: var(--radius);
 }
 
 .recipe-skeleton__body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
+  gap: var(--space-2);
 }
 
 .recipe-skeleton__line {
   height: 12px;
-  background: rgba(42, 31, 18, 0.12);
+  background: var(--ink-3);
+  border-radius: var(--radius);
 }
 
 .recipe-skeleton__line--short {
-  width: 58%;
+  width: 56%;
 }
 
-/* Error state — red neon alarm */
+/* ---------- error ---------- */
 .recipe-error {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: var(--space-2xl);
-  background: rgba(255, 77, 109, 0.06);
-  border: 1px solid var(--neon-rose);
+  gap: var(--space-3);
+  padding: var(--space-8);
+  background: var(--panel);
+  border: 1px solid var(--rose);
+  border-radius: var(--radius-lg);
   text-align: center;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 77, 109, 0.15),
-    0 0 24px rgba(255, 77, 109, 0.15);
 }
 
 .recipe-error__icon {
-  width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 77, 109, 0.1);
-  border: 1px solid var(--neon-rose);
-  color: var(--neon-rose-glow);
-  font-family: var(--font-display);
-  text-shadow: 0 0 8px var(--neon-rose);
+  color: var(--rose);
 }
 
 .recipe-error__message {
   margin: 0;
-  font-family: var(--font-pixel);
+  font-size: var(--fs-body);
   color: var(--bone);
-  font-size: 18px;
   max-width: 440px;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
+  line-height: 1.5;
 }
 
-/* Empty state — "SHELF EMPTY" neon sign */
+/* ---------- empty ("Shelf Empty") ---------- */
 .recipe-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 48px 20px;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgba(255, 180, 84, 0.06), transparent 65%),
-    linear-gradient(180deg, rgba(10, 3, 5, 0.6), rgba(20, 7, 11, 0.85));
-  border: 1px solid var(--brass-lo);
+  padding: var(--space-12) var(--space-5);
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-top: 2px solid var(--brass);
+  border-radius: var(--radius-lg);
 }
 
 .recipe-empty__visual {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  background: transparent;
-  border: 1px solid var(--brass);
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--brass-lo);
+  border-radius: var(--radius);
   color: var(--brass-hi);
-  margin-bottom: 18px;
-  position: relative;
+  margin-bottom: var(--space-4);
 }
-.recipe-empty__visual::before,
-.recipe-empty__visual::after {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 1px solid var(--brass-hi);
-}
-.recipe-empty__visual::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
-.recipe-empty__visual::after  { bottom: -1px; right: -1px; border-left: none; border-top: none; }
 
 .recipe-empty__icon {
-  color: var(--bone);
-  text-shadow: 0 0 8px rgba(255, 180, 84, 0.3);
+  color: var(--brass-hi);
 }
 
 .recipe-empty__title {
-  margin: 0 0 10px 0;
+  margin: 0 0 var(--space-2);
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 400;
+  letter-spacing: 0.06em;
   color: var(--bone);
-  letter-spacing: 0.18em;
-  text-shadow: 0 0 8px rgba(255, 180, 84, 0.3);
-}
-.recipe-empty__title::before,
-.recipe-empty__title::after {
-  content: '◆';
-  color: var(--brass);
-  margin: 0 14px;
-  vertical-align: middle;
-  font-size: 14px;
 }
 
 .recipe-empty__text {
-  margin: 0 0 20px 0;
-  max-width: 360px;
-  font-family: var(--font-pixel);
-  color: var(--bone-soft);
-  font-size: 18px;
-  line-height: 1.4;
+  margin: 0 0 var(--space-5);
+  max-width: 380px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--bone-2);
 }
 
 .recipe-empty__btn {
-  padding: 8px 18px;
-  border: 1px solid var(--brass);
-  background: linear-gradient(180deg, rgba(200, 148, 102, 0.15), rgba(200, 148, 102, 0.03));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--brass-lo);
+  border-radius: var(--radius);
+  background: var(--ink-2);
   color: var(--bone);
-  font-family: var(--font-pixel);
-  font-size: 16px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 500;
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .recipe-empty__btn:hover {
-  background: linear-gradient(180deg, rgba(200, 148, 102, 0.3), rgba(200, 148, 102, 0.1));
-  border-color: var(--brass-hi);
+  background: var(--ink-3);
+  border-color: var(--brass);
 }
 
-.recipe-empty__btn:active {
-  transform: translateY(1px);
-}
-
-/* Shelf plank label — displayed above a group (optional, kept for future use) */
-.plank-label {
-  font-family: var(--font-display);
-  font-size: 14px;
-  letter-spacing: 0.25em;
-  color: var(--brass-hi);
-  padding: 8px 0 6px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--brass-lo);
-}
-.plank-label::before {
-  content: '▰ ▰';
-  color: var(--brass);
-  font-size: 10px;
-  letter-spacing: -0.2em;
-}
-.plank-label small {
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.3em;
-  color: var(--brass);
-  opacity: 0.85;
-  text-transform: uppercase;
-}
-
-@media (max-width: 1200px) {
+/* ---------- responsive ---------- */
+@media (max-width: 1250px) {
   .recipe-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   }
 }
 
 @media (max-width: 768px) {
   .recipe-grid {
-    grid-template-columns: 1fr;
-    padding: 12px 10px 18px;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
   }
-
   .recipe-skeleton {
     min-height: 180px;
   }
-
   .recipe-empty {
-    padding: 32px 16px;
+    padding: var(--space-8) var(--space-4);
   }
-
   .recipe-empty__title {
-    font-size: 24px;
-    letter-spacing: 0.12em;
+    font-size: 22px;
   }
 }
 
 @media (max-width: 480px) {
   .recipe-status {
-    gap: 6px 10px;
-  }
-  .recipe-status__count strong {
-    font-size: 16px;
+    gap: var(--space-1) var(--space-2);
   }
   .recipe-empty__btn {
     width: 100%;

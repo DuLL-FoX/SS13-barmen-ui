@@ -49,20 +49,6 @@ function stableHash(input: string): number {
   return h >>> 0;
 }
 
-/** Produce a deterministic decorative barcode pattern — alternating dark/light
- *  bars with widths 1..4 px derived from the recipe seed. Purely visual. */
-function decorativeBarcode(seed: string): { width: number; dark: boolean }[] {
-  let state = stableHash(seed) || 1;
-  const bars: { width: number; dark: boolean }[] = [];
-  const N = 28;
-  for (let i = 0; i < N; i++) {
-    state = (Math.imul(state, 1103515245) + 12345) >>> 0;
-    const w = 1 + (state % 4);
-    bars.push({ width: w, dark: i % 2 === 0 });
-  }
-  return bars;
-}
-
 interface RecipeCardProps {
   recipe: RecipeType;
 }
@@ -154,9 +140,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   }
   const stamps = stampCandidates.slice(0, 3);
 
-  const barcodeSeed = recipe.path || recipe.id || recipe.name || 'recipe';
-  const barcodeBars = decorativeBarcode(barcodeSeed);
-  const serial = (stableHash(barcodeSeed) % 9000) + 1000;
+  const serialSeed = recipe.path || recipe.id || recipe.name || 'recipe';
+  const serial = (stableHash(serialSeed) % 9000) + 1000;
 
   return (
     <article
@@ -386,18 +371,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       )}
 
       <div className="recipe-card__footer">
-        <div className="recipe-card__barcode" aria-hidden="true">
-          <div className="recipe-card__barcode-bars">
-            {barcodeBars.map((b: { width: number; dark: boolean }, i: number) => (
-              <span
-                key={i}
-                className={`recipe-card__barcode-bar${b.dark ? ' recipe-card__barcode-bar--dark' : ''}`}
-                style={{ width: `${b.width}px` }}
-              />
-            ))}
-          </div>
-          <div className="recipe-card__barcode-serial">№ {serial}</div>
-        </div>
+        <div className="recipe-card__serial" aria-hidden="true">№ {serial}</div>
         {stamps.length > 0 && (
           <div className="recipe-card__stamps" aria-hidden="true">
             {stamps.map((s) => (

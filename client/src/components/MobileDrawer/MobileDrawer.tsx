@@ -8,15 +8,23 @@ export function MobileDrawer() {
   const { mobileFilterOpen, setMobileFilterOpen } = useApp();
 
   useEffect(() => {
-    if (mobileFilterOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
+    if (!mobileFilterOpen) {
       document.body.style.overflow = '';
+      return;
     }
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        trackEvent('mobile_filters_close', { method: 'escape' });
+        setMobileFilterOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKeyDown);
     };
-  }, [mobileFilterOpen]);
+  }, [mobileFilterOpen, setMobileFilterOpen]);
 
   return (
     <div className="mobile-drawer" aria-hidden={!mobileFilterOpen}>

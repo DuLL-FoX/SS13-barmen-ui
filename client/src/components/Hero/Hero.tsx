@@ -1,6 +1,15 @@
+import { useEffect, useRef } from 'react';
 import { useApp } from '@/context/useApp';
 import { trackEvent } from '@/utils';
 import './Hero.css';
+
+const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+}
 
 export function Hero() {
   const {
@@ -18,6 +27,25 @@ export function Hero() {
     setShowDeveloperDetails,
     setMobileFilterOpen,
   } = useApp();
+
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const input = searchRef.current;
+      if (!input) return;
+      const modifier = isMac ? event.metaKey : event.ctrlKey;
+      const isShortcut =
+        (modifier && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') ||
+        (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey && !isTypingTarget(event.target));
+      if (!isShortcut) return;
+      event.preventDefault();
+      input.focus();
+      input.select();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const toLimitedList = (items: string[], limit: number) => {
     const sliced = items.slice(0, limit);
@@ -70,16 +98,17 @@ export function Hero() {
           <h1 className="neon-sign__title">
             THE&nbsp;ORBITAL<span className="neon-sign__amp">&amp;</span>BAR
           </h1>
-          <div className="neon-sign__sub">◀ Bartender Companion Terminal ▶</div>
+          <div className="neon-sign__sub">Bartender Companion Terminal</div>
         </div>
 
         <div className="command-bar">
           <div className="command-bar__search-wrap">
-            <span className="command-bar__search-icon" aria-hidden="true">▶</span>
+            <span className="command-bar__search-icon" aria-hidden="true">›</span>
             <input
+              ref={searchRef}
               type="search"
               className="command-bar__search"
-              placeholder="SEARCH RECIPES, REAGENTS, INGREDIENTS..."
+              placeholder="Search recipes, reagents, ingredients…"
               aria-label="Search recipes"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -93,12 +122,12 @@ export function Hero() {
               }}
             />
             <div className="command-bar__kbd" aria-hidden="true">
-              <span className="kbd">⌘</span><span className="kbd">K</span>
+              <span className="kbd">{isMac ? '⌘' : 'Ctrl'}</span><span className="kbd">K</span>
             </div>
           </div>
           <button
             type="button"
-            className="command-bar__pill command-bar__pill--mobile"
+            className="btn command-bar__pill command-bar__pill--mobile"
             aria-label="Open filters"
             onClick={() => {
               trackEvent('mobile_filters_open', { method: 'button' });
@@ -108,11 +137,11 @@ export function Hero() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
             </svg>
-            MENU
+            Menu
           </button>
           <button
             type="button"
-            className="command-bar__pill"
+            className="btn command-bar__pill"
             aria-pressed={showDeveloperDetails}
             onClick={() => {
               const next = !showDeveloperDetails;
@@ -121,7 +150,7 @@ export function Hero() {
             }}
           >
             <span aria-hidden="true">✎</span>
-            {showDeveloperDetails ? 'DEV ON' : 'DEV'}
+            {showDeveloperDetails ? 'Dev on' : 'Dev'}
           </button>
         </div>
 

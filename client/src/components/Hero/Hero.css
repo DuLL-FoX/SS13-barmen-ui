@@ -1,85 +1,75 @@
 /* =========================================================
-   HERO — Neon sign + command bar
+   HERO — sign, command bar, quality strip
+   House-lights revision: solid sign, no flicker, readable bar.
    ========================================================= */
 .hero {
-  position: relative;
-  padding: var(--space-lg) clamp(var(--space-md), 1.5vw, var(--space-xl)) 0;
-  overflow: visible;
+  width: 100%;
+  padding: var(--space-6) 0 0;
 }
 
 .hero__content {
   width: 100%;
-  position: relative;
-  z-index: 1;
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 /* =========================================================
-   NEON SIGN
+   SIGN
    ========================================================= */
 .neon-sign {
-  position: relative;
   text-align: center;
-  padding: 8px 8px 14px;
+  padding: var(--space-2) 0 var(--space-1);
 }
 
 .neon-sign__eyebrow {
   font-family: var(--font-mono);
-  letter-spacing: 0.4em;
-  font-size: 11px;
-  color: var(--brass-hi);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-bottom: 10px;
-  opacity: 0.9;
+  color: var(--brass-hi);
+  margin-bottom: var(--space-2);
 }
 .neon-sign__eyebrow::before,
 .neon-sign__eyebrow::after {
   content: '◆';
   color: var(--brass);
-  margin: 0 12px;
-  opacity: 0.6;
+  margin: 0 10px;
   font-size: 8px;
   vertical-align: middle;
 }
 
 .neon-sign__title {
+  margin: 0;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(32px, 6vw, 54px);
-  line-height: 1;
+  font-size: clamp(30px, 4.2vw, 48px);
+  line-height: 1.05;
   letter-spacing: 0.04em;
-  margin: 0;
-  color: #fff0f3;
-  text-shadow:
-    0 0 2px #fff,
-    0 0 8px var(--neon-rose-glow),
-    0 0 18px var(--neon-rose),
-    0 0 38px var(--neon-rose),
-    0 0 78px rgba(255, 77, 109, 0.5);
-  animation: neon-flicker 6s infinite;
+  color: var(--rose);
+  text-shadow: 0 0 18px rgba(255, 92, 122, 0.35);
 }
 
 .neon-sign__amp {
   font-family: var(--font-display);
-  font-size: 0.68em;
+  font-size: 0.7em;
   color: var(--cyan);
-  text-shadow:
-    0 0 2px #fff,
-    0 0 8px var(--cyan-glow),
-    0 0 22px var(--cyan),
-    0 0 44px rgba(92, 225, 230, 0.5);
-  vertical-align: 6px;
-  margin: 0 12px;
-  animation: neon-flicker 8s infinite 1s;
+  text-shadow: 0 0 18px rgba(111, 214, 219, 0.35);
+  vertical-align: 0.12em;
+  margin: 0 0.3em;
 }
 
 .neon-sign__sub {
-  font-family: var(--font-pixel);
-  font-size: 18px;
-  letter-spacing: 0.3em;
-  color: var(--brass-hi);
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-top: 12px;
-  opacity: 0.95;
+  color: var(--bone-2);
 }
 
 /* =========================================================
@@ -88,14 +78,11 @@
 .command-bar {
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  margin: 16px 0 10px;
-  position: relative;
-  z-index: 3;
+  gap: var(--space-2);
 }
 
 .command-bar__search-wrap {
-  flex: 1;
+  flex: 1 1 auto;
   position: relative;
   display: flex;
   align-items: center;
@@ -104,47 +91,45 @@
 
 .command-bar__search-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--neon-rose);
-  font-size: 11px;
-  text-shadow: 0 0 6px var(--neon-rose);
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  line-height: 1;
   pointer-events: none;
-  animation: cursor-blink 1.4s steps(2) infinite;
 }
 
 .command-bar__search {
-  flex: 1;
   width: 100%;
-  background: linear-gradient(180deg, #0a0305 0%, #180a0e 100%);
-  border: 1px solid var(--brass);
-  padding: 12px 72px 12px 36px;
-  font-family: var(--font-pixel);
-  font-size: 22px;
+  height: 48px;
+  padding: 0 96px 0 36px;
+  background: var(--ink-1);
+  border: 1px solid var(--brass-lo);
+  border-radius: var(--radius);
   color: var(--bone);
-  letter-spacing: 0.04em;
-  box-shadow:
-    inset 0 0 0 1px rgba(232, 190, 142, 0.2),
-    inset 0 0 30px rgba(255, 77, 109, 0.08);
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  line-height: 1.2;
   outline: none;
-  border-radius: 0;
-  transition: border-color var(--transition-base), box-shadow var(--transition-base);
   -webkit-appearance: none;
   appearance: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .command-bar__search::placeholder {
-  color: var(--bone-dim);
-  opacity: 0.8;
+  color: var(--bone-3);
+  opacity: 1;
 }
 
 .command-bar__search:focus {
   border-color: var(--brass-hi);
-  box-shadow:
-    inset 0 0 0 1px rgba(232, 190, 142, 0.35),
-    inset 0 0 30px rgba(255, 77, 109, 0.12),
-    0 0 0 3px rgba(232, 190, 142, 0.15);
+  box-shadow: 0 0 0 3px rgba(230, 192, 140, 0.18);
+}
+
+.command-bar__search:focus-visible {
+  outline: none;
 }
 
 .command-bar__search::-webkit-search-cancel-button,
@@ -154,86 +139,60 @@
 
 .command-bar__kbd {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  gap: 3px;
+  gap: 4px;
   pointer-events: none;
 }
 
 .command-bar__pill {
-  padding: 10px 16px;
-  border: 1px solid var(--brass);
-  background: linear-gradient(180deg, rgba(200, 148, 102, 0.12), rgba(200, 148, 102, 0.02));
-  color: var(--bone);
-  font-family: var(--font-pixel);
-  font-size: 19px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  height: 48px;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: 500;
   white-space: nowrap;
-  transition: background var(--transition-base), color var(--transition-base), border-color var(--transition-base);
+  flex: 0 0 auto;
 }
 
-.command-bar__pill:hover {
-  background: linear-gradient(180deg, rgba(200, 148, 102, 0.24), rgba(200, 148, 102, 0.08));
-  color: var(--bone);
-  border-color: var(--brass-hi);
-}
-
-.command-bar__pill[aria-pressed="true"] {
-  background: var(--brass);
-  color: var(--ink);
-  border-color: var(--brass-hi);
-  text-shadow: none;
-}
-
-.command-bar__pill--mobile {
+.command-bar .command-bar__pill--mobile {
   display: none;
 }
 
 @media (max-width: 1024px) {
-  .command-bar__pill--mobile {
+  .command-bar .command-bar__pill--mobile {
     display: inline-flex;
   }
 }
 
 /* =========================================================
-   QUALITY STRIP — a small information panel under the command bar
+   QUALITY STRIP
    ========================================================= */
 .hero__quality-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.15em;
-  color: var(--brass);
-  text-transform: uppercase;
-  padding: 10px 14px;
-  background:
-    linear-gradient(90deg, var(--brass-lo), transparent 12%, transparent 88%, var(--brass-lo)),
-    rgba(10, 3, 5, 0.7);
-  border-top: 1px solid var(--brass-lo);
-  border-bottom: 1px solid var(--brass-lo);
-  margin-top: 6px;
   flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-1);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .hero__quality-info .quality-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
   font-weight: 500;
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
   color: var(--brass-hi);
-  letter-spacing: 0.25em;
 }
 
 .hero__quality-info .quality-levels {
   display: flex;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .hero__quality-info .quality-badge {
@@ -241,17 +200,17 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border: 1px solid rgba(200, 148, 102, 0.3);
-  background: rgba(200, 148, 102, 0.04);
-  font-family: var(--font-pixel);
-  font-size: 17px;
-  letter-spacing: 0.04em;
-  text-transform: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--bone);
 }
 
 .hero__quality-info .quality-badge__dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
@@ -260,95 +219,51 @@
 }
 
 .hero__quality-info .quality-badge__boost {
-  opacity: 0.75;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--fs-label);
+  color: var(--bone-3);
 }
 
-.hero__quality-info .quality-badge--good {
-  border-color: rgba(140, 224, 192, 0.4);
-  background: rgba(140, 224, 192, 0.06);
-}
-.hero__quality-info .quality-badge--good .quality-badge__dot {
-  background: #8ce0c0;
-  box-shadow: 0 0 4px rgba(140, 224, 192, 0.6);
-}
-.hero__quality-info .quality-badge--good .quality-badge__name {
-  color: #8ce0c0;
-}
-
-.hero__quality-info .quality-badge--great {
-  border-color: rgba(92, 225, 230, 0.45);
-  background: rgba(92, 225, 230, 0.06);
-}
-.hero__quality-info .quality-badge--great .quality-badge__dot {
-  background: var(--cyan);
-  box-shadow: 0 0 5px var(--cyan);
-}
-.hero__quality-info .quality-badge--great .quality-badge__name {
-  color: var(--cyan-glow);
-}
-
-.hero__quality-info .quality-badge--excellent {
-  border-color: rgba(255, 122, 148, 0.45);
-  background: rgba(255, 122, 148, 0.06);
-}
-.hero__quality-info .quality-badge--excellent .quality-badge__dot {
-  background: var(--neon-rose-glow);
-  box-shadow: 0 0 5px var(--neon-rose);
-}
-.hero__quality-info .quality-badge--excellent .quality-badge__name {
-  color: var(--neon-rose-glow);
-}
-
-.hero__quality-info .quality-badge--fantastic {
-  border-color: rgba(255, 180, 84, 0.5);
-  background: rgba(255, 180, 84, 0.06);
-}
-.hero__quality-info .quality-badge--fantastic .quality-badge__dot {
-  background: var(--amber);
-  box-shadow: 0 0 6px rgba(255, 180, 84, 0.7);
-}
-.hero__quality-info .quality-badge--fantastic .quality-badge__name {
-  color: var(--amber);
-}
+.hero__quality-info .quality-badge--good .quality-badge__dot { background: var(--mint); }
+.hero__quality-info .quality-badge--great .quality-badge__dot { background: var(--cyan); }
+.hero__quality-info .quality-badge--excellent .quality-badge__dot { background: var(--rose); }
+.hero__quality-info .quality-badge--fantastic .quality-badge__dot { background: var(--amber); }
 
 .hero__quality-info .quality-suffix {
-  opacity: 0.7;
-  font-style: normal;
   margin-left: auto;
-  letter-spacing: 0.25em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking);
+  text-transform: uppercase;
+  color: var(--bone-3);
 }
 
-@media (max-width: 1024px) {
-  .hero {
-    padding: var(--space-md) var(--space-md) 0;
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 1250px) {
+  .hero__content {
+    padding: 0 var(--space-4);
   }
 }
 
 @media (max-width: 768px) {
   .hero {
-    padding: var(--space-md) var(--space-sm) 0;
+    padding-top: var(--space-4);
   }
-  .command-bar__pill {
-    padding: 6px 10px;
-    font-size: 14px;
-  }
-  .neon-sign__sub {
-    font-size: 11px;
-    letter-spacing: 0.3em;
-  }
-  .hero__quality-info .quality-suffix {
-    display: none;
-  }
+  .hero__quality-info .quality-suffix,
   .hero__quality-info .quality-badge__boost {
     display: none;
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 640px) {
+  .hero__content {
+    padding: 0 var(--space-3);
+  }
+  .neon-sign__title {
+    font-size: 32px;
+  }
   .command-bar {
     flex-wrap: wrap;
   }
@@ -357,22 +272,14 @@
   }
   .command-bar__pill {
     flex: 1 1 0;
-    justify-content: center;
+  }
+  .command-bar__kbd {
+    display: none;
+  }
+  .command-bar__search {
+    padding-right: var(--space-3);
   }
   .hero__quality-info .quality-label {
     display: none;
-  }
-  .hero__quality-info .quality-badge__name {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .neon-sign__eyebrow {
-    letter-spacing: 0.3em;
-    font-size: 8px;
-  }
-  .neon-sign__title {
-    font-size: 28px;
   }
 }

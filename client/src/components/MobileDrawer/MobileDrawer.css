@@ -1,5 +1,5 @@
 /* =========================================================
-   MOBILE DRAWER — deco menu drawer
+   MOBILE DRAWER — the menu slides in from the left
    ========================================================= */
 .mobile-only {
   display: none;
@@ -11,7 +11,7 @@
   z-index: 100;
   display: flex;
   visibility: hidden;
-  transition: visibility 0.35s ease;
+  transition: visibility var(--transition-drawer);
 }
 
 .mobile-drawer[aria-hidden="false"] {
@@ -21,11 +21,9 @@
 .mobile-drawer__overlay {
   position: absolute;
   inset: 0;
-  background: rgba(10, 4, 6, 0.82);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(20, 9, 12, 0.7);
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity var(--transition-drawer);
 }
 
 .mobile-drawer[aria-hidden="false"] .mobile-drawer__overlay {
@@ -38,22 +36,16 @@
   bottom: 0;
   left: 0;
   width: min(360px, 92vw);
-  background:
-    linear-gradient(180deg, rgba(26, 10, 14, 0.97), rgba(10, 3, 5, 1)),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 6px,
-      rgba(200, 148, 102, 0.04) 6px 7px
-    );
-  border-right: 1px solid var(--brass);
-  padding: 16px 14px 20px;
+  background: var(--ink-1);
+  border-right: 1px solid var(--line-strong);
+  padding: var(--space-4) var(--space-4) var(--space-5);
   transform: translateX(-100%);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--transition-drawer);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
   overflow-y: auto;
-  box-shadow: 20px 0 48px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-2);
   overscroll-behavior: contain;
 }
 
@@ -65,49 +57,48 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px dashed rgba(200, 148, 102, 0.35);
-  margin-bottom: 4px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
 }
 
 .mobile-drawer__header h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: var(--fs-title);
   font-weight: 400;
-  color: #fff0f3;
-  letter-spacing: 0.12em;
-  text-shadow: 0 0 8px var(--neon-rose), 0 0 18px var(--neon-rose);
+  color: var(--bone);
+  letter-spacing: 0.04em;
 }
 
 .mobile-drawer__close {
-  background: transparent;
-  border: 1px solid var(--neon-rose);
-  color: var(--neon-rose);
-  width: 38px;
-  height: 38px;
+  background: var(--ink-2);
+  border: 1px solid var(--brass-lo);
+  border-radius: var(--radius);
+  color: var(--bone);
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-pixel);
-  font-size: 22px;
+  font-family: var(--font-sans);
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .mobile-drawer__close:hover {
-  color: #fff;
-  background: rgba(255, 77, 109, 0.12);
-  box-shadow: 0 0 10px rgba(255, 77, 109, 0.4);
+  border-color: var(--brass);
+  background: var(--ink-3);
 }
 
-/* Nested Filters panel is presented "flat" inside the drawer */
+/* Nested Filters panel is presented flat inside the drawer */
 .mobile-drawer .filters {
   display: flex;
   background: transparent;
   border: none;
+  border-radius: 0;
   box-shadow: none;
   padding: 0;
   position: static;
@@ -124,11 +115,12 @@
 @media (max-width: 480px) {
   .mobile-drawer__content {
     width: 100%;
-    padding: 14px 12px 18px;
+    padding: var(--space-3) var(--space-3) var(--space-5);
     border-right: none;
   }
+}
 
-  .mobile-drawer__header h2 {
-    font-size: 18px;
-  }
+/* The drawer already has its own "Filters" header; the sidebar masthead is redundant inside it. */
+.mobile-drawer .filters__masthead {
+  display: none;
 }

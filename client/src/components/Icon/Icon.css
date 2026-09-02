@@ -1,58 +1,28 @@
-
 .icon {
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;
 }
 
-.icon--fire {
-  color: #f97316;
-}
+/* On paper */
+.icon--fire      { color: var(--paper-amber); }
+.icon--cold      { color: var(--paper-teal); }
+.icon--pill      { color: var(--paper-plum); }
+.icon--skull     { color: var(--paper-rose); }
+.icon--sparkle   { color: var(--paper-amber); }
+.icon--heart     { color: var(--paper-green); }
+.icon--bolt      { color: var(--paper-plum); }
+.icon--ingredient,
+.icon--result,
+.icon--catalyst  { color: var(--paper-ink-2); }
+.icon--chevron-right,
+.icon--chevron-down,
+.icon--plus,
+.icon--minus     { color: currentColor; }
+.icon--tree      { color: var(--paper-teal); }
 
-.icon--cold {
-  color: #38bdf8;
-}
-
-.icon--pill {
-  color: #a78bfa;
-}
-
-.icon--skull {
-  color: #f87171;
-}
-
-.icon--sparkle {
-  color: #fbbf24;
-}
-
-.icon--heart {
-  color: #f472b6;
-}
-
-.icon--bolt {
-  color: #facc15;
-}
-
-.icon--ingredient {
-  color: var(--accent);
-}
-
-.icon--result {
-  color: var(--secondary);
-}
-
-.icon--catalyst {
-  color: var(--accent);
-}
-
-.icon--search {
-  color: var(--muted);
-}
-
-.icon--alert {
-  color: var(--error);
-}
-
-.icon--tree {
-  color: var(--secondary);
-}
+/* On dark (empty / error states) */
+.icon--search    { color: var(--bone-2); }
+.icon--alert     { color: var(--rose); }
+.recipe-error .icon,
+.recipe-empty .icon--tree { color: var(--cyan); }
