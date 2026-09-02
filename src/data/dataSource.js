@@ -15,6 +15,15 @@ export const REPO_NAME = "BlueMoon-Station";
 const BASE_RAW = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${SOURCE_BRANCH}`;
 const BASE_API = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents`;
 
+/**
+ * Upstream file/folder map. Every entry is optional at runtime: a missing file or
+ * folder is skipped with a warning and never takes a whole category down.
+ *
+ * Folders are preferred over hand-picked files wherever the upstream keeps moving
+ * things between `code/`, `modular_bluemoon/`, `modular_splurt/`, `modular_sand/`
+ * and `modular_citadel/`. Everything listed here mirrors what `tgstation.dme`
+ * actually compiles, so overrides from every modular layer are picked up.
+ */
 export const SOURCES = {
   recipeFiles: [
     "code/modules/food_and_drinks/recipes/drinks_recipes.dm",
@@ -22,63 +31,64 @@ export const SOURCES = {
     "modular_bluemoon/code/modules/food_and_drinks/recipes/drinks_recipes.dm",
     "code/modules/reagents/chemistry/recipes/drugs.dm",
     "modular_bluemoon/code/modules/reagents/chemistry/recipes/recipes.dm",
-    "code/modules/reagents/chemistry/recipes/others.dm"
+    "code/modules/reagents/chemistry/recipes/others.dm",
+    "modular_splurt/code/modules/reagents/chemistry/recipes/others.dm",
+    "modular_sand/code/modules/reagents/chemistry/recipes/others.dm"
   ],
   recipeFolders: ["modular_splurt/code/modules/food_and_drinks/recipes"],
   synthRecipeFiles: ["modular_bluemoon/code/modules/food_and_drinks/recipes/synth_drinks_recipes.dm"],
   reagentFiles: [
     "code/modules/reagents/chemistry/reagents/alcohol_reagents.dm",
     "code/modules/reagents/chemistry/reagents/drink_reagents.dm",
-    "modular_sand/code/modules/reagents/chemistry/reagents/drink_reagents.dm",
-    "modular_splurt/code/modules/reagents/chemistry/reagents/drink_reagents.dm",
-    "modular_splurt/code/modules/reagents/chemistry/reagents/alcohol_reagents.dm",
     "code/modules/reagents/chemistry/reagents/drug_reagents.dm",
-    "modular_splurt/code/modules/reagents/chemistry/reagents/cit_reagents.dm",
     "code/modules/reagents/chemistry/reagents/food_reagents.dm",
     "code/modules/reagents/chemistry/reagents/other_reagents.dm",
-    "modular_bluemoon/code/modules/reagents/chemistry/reagents/drink_synth.dm",
-    "modular_bluemoon/code/modules/reagents/chemistry/reagents/drink_reagents.dm"
+    "code/modules/reagents/chemistry/reagents/medicine_reagents.dm",
+    "code/modules/reagents/chemistry/reagents/toxin_reagents.dm"
   ],
   reagentFolders: [
     "modular_bluemoon/code/modules/reagents/chemistry/reagents",
-    "modular_splurt/code/modules/reagents/chemistry/reagents"
+    "modular_splurt/code/modules/reagents/chemistry/reagents",
+    "modular_sand/code/modules/reagents/chemistry/reagents",
+    "modular_citadel/code/modules/reagents/chemistry/reagents"
   ],
   dispenserFiles: [
     "code/modules/reagents/chemistry/machinery/chem_dispenser.dm",
-    "modular_splurt/code/modules/reagents/chemistry/machinery/chem_dispenser.dm",
-    "modular_sand/code/modules/reagents/reagent_dispenser.dm",
-    "code/modules/reagents/reagent_dispenser.dm"
+    "code/modules/reagents/reagent_dispenser.dm",
+    "modular_bluemoon/code/modules/reagents/reagent_dispenser.dm",
+    "modular_splurt/code/modules/reagents/reagent_dispenser.dm",
+    "modular_sand/code/modules/reagents/reagent_dispenser.dm"
   ],
-  dispenserFolders: ["modular_splurt/code/modules/reagents/chemistry/machinery"],
+  dispenserFolders: [
+    "modular_splurt/code/modules/reagents/chemistry/machinery",
+    "modular_sand/code/modules/reagents/chemistry/machinery"
+  ],
   drinkContainerFiles: [
     "code/modules/food_and_drinks/drinks/drinks.dm",
     "code/modules/food_and_drinks/drinks/drinks/bottle.dm",
+    "code/modules/food_and_drinks/drinks/drinks/drinkingglass.dm",
     "modular_bluemoon/code/modules/food_and_drinks/drinks/drinks.dm",
     "modular_bluemoon/code/modules/food_and_drinks/drinks/drinks/bottle.dm",
     "code/modules/reagents/reagent_containers/bottle.dm"
   ],
   drinkContainerFolders: [
     "modular_splurt/code/modules/food_and_drinks/drinks",
-    "modular_splurt/code/modules/food_and_drinks/drinks/drinks",
-    "code/modules/reagents/reagent_containers"
+    "code/modules/reagents/reagent_containers",
+    "modular_bluemoon/code/modules/reagents/reagent_containers"
   ],
-  vendingFiles: [
-    "modular_bluemoon/code/modules/vending/boozeomat.dm",
-    "modular_bluemoon/code/modules/vending/coffee.dm",
-    "modular_bluemoon/code/modules/vending/cola.dm",
-    "modular_bluemoon/code/modules/vending/kinkmate.dm"
+  vendingFiles: [],
+  vendingFolders: [
+    "code/modules/vending",
+    "modular_bluemoon/code/modules/vending",
+    "modular_splurt/code/modules/vending",
+    "modular_sand/code/modules/vending"
   ],
-  vendingFolders: ["modular_splurt/code/modules/vending"],
-  supplyPackFiles: [
-    "code/modules/cargo/packs/organic.dm",
-    "code/modules/cargo/packs/armory.dm",
-    "code/modules/cargo/packs/medical.dm",
-    "code/modules/cargo/packs/misc.dm",
-    "code/modules/cargo/packs/security.dm"
-  ],
+  supplyPackFiles: [],
   supplyPackFolders: [
+    "code/modules/cargo/packs",
     "modular_bluemoon/code/modules/cargo/packs",
-    "modular_splurt/code/modules/cargo/packs"
+    "modular_splurt/code/modules/cargo/packs",
+    "modular_sand/code/modules/cargo/packs"
   ]
 };
 
@@ -100,69 +110,154 @@ function formatRateLimitMessage(response) {
   return `GitHub rate limit exceeded.${authHint}${resetInfo}`;
 }
 
-async function hasLocalRepository() {
+async function hasLocalRepository(repoPath = LOCAL_REPO_PATH) {
   try {
-    const stats = await fs.stat(LOCAL_REPO_PATH);
+    const stats = await fs.stat(repoPath);
     return stats.isDirectory();
   } catch {
     return false;
   }
 }
 
-async function getLocalVersionInfo() {
+async function readTextIfExists(filePath) {
   try {
-    if (!(await hasLocalRepository())) return null;
-    const gitDir = path.join(LOCAL_REPO_PATH, ".git");
-    const gitStats = await fs.stat(gitDir).catch(() => null);
-    if (!gitStats) return { branch: "local", commit: null, repository: "local", isLocal: true };
-
-    const sha = execSync("git rev-parse HEAD", { cwd: LOCAL_REPO_PATH, encoding: "utf-8" }).trim();
-    const branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: LOCAL_REPO_PATH, encoding: "utf-8" }).trim();
-    const message = execSync("git log -1 --format=%s", { cwd: LOCAL_REPO_PATH, encoding: "utf-8" }).trim();
-    const date = execSync("git log -1 --format=%aI", { cwd: LOCAL_REPO_PATH, encoding: "utf-8" }).trim();
-
-    return {
-      branch,
-      commit: sha.substring(0, 7),
-      commitFull: sha,
-      commitMessage: message,
-      commitDate: date,
-      repository: "local",
-      isLocal: true
-    };
-  } catch (error) {
-    console.warn("Failed to get local git info:", error.message);
-    return { branch: "local", commit: null, repository: "local", isLocal: true };
-  }
-}
-
-async function readLocalFile(relativePath) {
-  try {
-    return await fs.readFile(path.join(LOCAL_REPO_PATH, relativePath), "utf-8");
+    return await fs.readFile(filePath, "utf-8");
   } catch {
     return null;
   }
 }
 
-async function listLocalFiles(relativePath, extensions = [".dm"]) {
-  const fullPath = path.join(LOCAL_REPO_PATH, relativePath);
+/**
+ * Resolve the actual git directory for a checkout. `.git` can be a directory or a
+ * file containing `gitdir: <path>` (worktrees / submodules).
+ */
+async function resolveGitDir(repoPath) {
+  const dotGit = path.join(repoPath, ".git");
+  let stats;
+  try {
+    stats = await fs.stat(dotGit);
+  } catch {
+    return null;
+  }
+  if (stats.isDirectory()) return dotGit;
+  if (stats.isFile()) {
+    const content = await readTextIfExists(dotGit);
+    const match = content?.match(/^gitdir:\s*(.+)$/m);
+    if (match) return path.resolve(repoPath, match[1].trim());
+  }
+  return null;
+}
+
+async function resolveRef(gitDir, refName) {
+  const direct = await readTextIfExists(path.join(gitDir, refName));
+  if (direct?.trim()) return direct.trim();
+  const packed = await readTextIfExists(path.join(gitDir, "packed-refs"));
+  if (packed) {
+    for (const line of packed.split(/\r?\n/)) {
+      if (!line || line.startsWith("#") || line.startsWith("^")) continue;
+      const [sha, name] = line.trim().split(/\s+/);
+      if (name === refName && sha) return sha;
+    }
+  }
+  return null;
+}
+
+/**
+ * Read HEAD information straight from the `.git` folder. This works inside minimal
+ * containers where no `git` binary exists and on read-only mounts owned by another
+ * user (where git refuses to run because of "dubious ownership").
+ */
+export async function readGitHeadInfo(repoPath) {
+  const gitDir = await resolveGitDir(repoPath);
+  if (!gitDir) return null;
+
+  const head = (await readTextIfExists(path.join(gitDir, "HEAD")))?.trim();
+  if (!head) return null;
+
+  let branch = "detached";
+  let sha = null;
+  const refMatch = head.match(/^ref:\s*(.+)$/);
+  if (refMatch) {
+    const refName = refMatch[1].trim();
+    branch = refName.replace(/^refs\/heads\//, "");
+    sha = await resolveRef(gitDir, refName);
+  } else if (/^[0-9a-f]{40}$/i.test(head)) {
+    sha = head;
+  }
+
+  let commitDate = null;
+  const reflog = await readTextIfExists(path.join(gitDir, "logs", "HEAD"));
+  if (reflog) {
+    const lines = reflog.trim().split(/\r?\n/).filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const match = lines[i].match(/^([0-9a-f]{40}) ([0-9a-f]{40}) .*? (\d{9,11}) ([+-]\d{4})\t/);
+      if (!match) continue;
+      if (sha && match[2] !== sha) continue;
+      commitDate = new Date(Number.parseInt(match[3], 10) * 1000).toISOString();
+      break;
+    }
+  }
+
+  return { branch, sha, commitDate };
+}
+
+function tryGitCommand(args, cwd) {
+  try {
+    return execSync(`git ${args}`, { cwd, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return null;
+  }
+}
+
+export async function getLocalVersionInfo(repoPath = LOCAL_REPO_PATH) {
+  const fallback = { branch: "local", commit: null, repository: "local", isLocal: true };
+  try {
+    if (!(await hasLocalRepository(repoPath))) return null;
+    const headInfo = await readGitHeadInfo(repoPath);
+    if (!headInfo?.sha) return fallback;
+
+    // Commit message/date are only available if a git binary can read the objects.
+    const message = tryGitCommand("log -1 --format=%s", repoPath);
+    const date = tryGitCommand("log -1 --format=%aI", repoPath);
+
+    return {
+      branch: headInfo.branch,
+      commit: headInfo.sha.substring(0, 7),
+      commitFull: headInfo.sha,
+      commitMessage: message || null,
+      commitDate: date || headInfo.commitDate || null,
+      commitUrl: `https://github.com/${REPO_OWNER}/${REPO_NAME}/commit/${headInfo.sha}`,
+      repository: `${REPO_OWNER}/${REPO_NAME}`,
+      isLocal: true
+    };
+  } catch (error) {
+    console.warn("Failed to read local git info:", error.message);
+    return fallback;
+  }
+}
+
+async function listLocalFiles(repoPath, relativePath, extensions = [".dm"]) {
+  const fullPath = path.join(repoPath, relativePath);
   const results = [];
 
   async function scanDir(dirPath) {
-    try {
-      const entries = await fs.readdir(dirPath, { withFileTypes: true });
-      for (const entry of entries) {
-        const entryPath = path.join(dirPath, entry.name);
-        if (entry.isDirectory()) {
-          await scanDir(entryPath);
-        } else if (entry.isFile() && extensions.includes(path.extname(entry.name).toLowerCase())) {
-          results.push(path.relative(LOCAL_REPO_PATH, entryPath).replace(/\\/g, "/"));
-        }
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        await scanDir(entryPath);
+      } else if (entry.isFile() && extensions.includes(path.extname(entry.name).toLowerCase())) {
+        results.push(path.relative(repoPath, entryPath).replace(/\\/g, "/"));
       }
-    } catch {}
+    }
   }
 
-  await scanDir(fullPath);
+  try {
+    await scanDir(fullPath);
+  } catch (error) {
+    console.warn(`Skipping folder ${relativePath}: ${error.code === "ENOENT" ? "not found upstream" : error.message}`);
+    return [];
+  }
   return results;
 }
 
@@ -238,45 +333,54 @@ async function fetchGithubLatestCommit() {
   }
 }
 
-export async function createDataSource() {
-  const useLocal = USE_LOCAL_DATA && (await hasLocalRepository());
+function mergeFileLists(fromFiles, fromFolders) {
+  const seen = new Set(fromFiles.map((f) => f.path));
+  return [...fromFiles, ...fromFolders.filter((f) => !seen.has(f.path))];
+}
 
-  if (useLocal) {
-    console.log("Using local BlueMoon-Station folder as data source");
-    const version = (await getLocalVersionInfo()) || { branch: "local", repository: "local", isLocal: true };
+/**
+ * Data source backed by a checkout on disk. Exported so tests can point it at a
+ * fixture directory.
+ */
+export async function createLocalDataSource(repoPath = LOCAL_REPO_PATH) {
+  const version = (await getLocalVersionInfo(repoPath)) || { branch: "local", repository: "local", isLocal: true };
 
-    return {
-      isLocal: true,
-      version,
+  return {
+    isLocal: true,
+    repoPath,
+    version,
 
-      async fetchFiles(filePaths) {
-        const results = [];
-        for (const filePath of filePaths) {
-          const text = await readLocalFile(filePath);
-          if (text) results.push({ path: filePath, text });
+    async fetchFiles(filePaths) {
+      const results = [];
+      for (const filePath of filePaths) {
+        const text = await readTextIfExists(path.join(repoPath, filePath));
+        if (text == null) {
+          console.warn(`Skipping file ${filePath}: not found upstream`);
+          continue;
         }
-        return results;
-      },
-
-      async fetchFilesFromFolders(folderPaths, extensions = [".dm"]) {
-        const allPaths = new Set();
-        for (const folder of folderPaths) {
-          const files = await listLocalFiles(folder, extensions);
-          files.forEach((f) => allPaths.add(f));
-        }
-        return this.fetchFiles(Array.from(allPaths));
-      },
-
-      async fetchAllFiles(filePaths, folderPaths, extensions = [".dm"]) {
-        const fromFiles = await this.fetchFiles(filePaths);
-        const fromFolders = await this.fetchFilesFromFolders(folderPaths, extensions);
-        const seen = new Set(fromFiles.map((f) => f.path));
-        return [...fromFiles, ...fromFolders.filter((f) => !seen.has(f.path))];
+        results.push({ path: filePath, text });
       }
-    };
-  }
+      return results;
+    },
 
-  console.log("Using GitHub as data source");
+    async fetchFilesFromFolders(folderPaths, extensions = [".dm"]) {
+      const allPaths = new Set();
+      for (const folder of folderPaths) {
+        const files = await listLocalFiles(repoPath, folder, extensions);
+        files.forEach((f) => allPaths.add(f));
+      }
+      return this.fetchFiles(Array.from(allPaths));
+    },
+
+    async fetchAllFiles(filePaths, folderPaths, extensions = [".dm"]) {
+      const fromFiles = await this.fetchFiles(filePaths);
+      const fromFolders = await this.fetchFilesFromFolders(folderPaths, extensions);
+      return mergeFileLists(fromFiles, fromFolders);
+    }
+  };
+}
+
+export async function createGithubDataSource() {
   const commitInfo = await fetchGithubLatestCommit();
   const version = {
     branch: SOURCE_BRANCH,
@@ -300,7 +404,7 @@ export async function createDataSource() {
             const text = await fetchGithubText(url);
             return { path: filePaths[i], text };
           } catch (error) {
-            console.warn(`Failed to fetch ${url}: ${error.message}`);
+            console.warn(`Skipping file ${filePaths[i]}: ${error.message}`);
             return null;
           }
         })
@@ -316,7 +420,7 @@ export async function createDataSource() {
           const files = await fetchGithubDirectoryFiles(apiUrl, extensions);
           files.forEach((url) => allUrls.add(url));
         } catch (error) {
-          console.warn(`Failed to fetch folder ${folder}: ${error.message}`);
+          console.warn(`Skipping folder ${folder}: ${error.message}`);
         }
       }
 
@@ -327,7 +431,8 @@ export async function createDataSource() {
             const urlPath = new URL(url).pathname;
             const repoPath = urlPath.replace(`/${REPO_OWNER}/${REPO_NAME}/${SOURCE_BRANCH}/`, "");
             return { path: repoPath, text };
-          } catch {
+          } catch (error) {
+            console.warn(`Skipping file ${url}: ${error.message}`);
             return null;
           }
         })
@@ -340,8 +445,22 @@ export async function createDataSource() {
         this.fetchFiles(filePaths),
         this.fetchFilesFromFolders(folderPaths, extensions)
       ]);
-      const seen = new Set(fromFiles.map((f) => f.path));
-      return [...fromFiles, ...fromFolders.filter((f) => !seen.has(f.path))];
+      return mergeFileLists(fromFiles, fromFolders);
     }
   };
+}
+
+export async function createDataSource() {
+  const useLocal = USE_LOCAL_DATA && (await hasLocalRepository());
+
+  if (useLocal) {
+    console.log(`Using local BlueMoon-Station folder as data source (${LOCAL_REPO_PATH})`);
+    return createLocalDataSource(LOCAL_REPO_PATH);
+  }
+
+  if (USE_LOCAL_DATA) {
+    console.warn(`USE_LOCAL_DATA is set but ${LOCAL_REPO_PATH} is not a directory; falling back to GitHub`);
+  }
+  console.log("Using GitHub as data source");
+  return createGithubDataSource();
 }

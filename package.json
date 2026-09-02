@@ -8,7 +8,8 @@
     "dev": "node src/server.js",
     "dev:client": "cd client && npm run dev",
     "build:client": "cd client && npm run build",
-    "extract:drinks": "node scripts/extract-drink-icons.mjs"
+    "extract:drinks": "node scripts/extract-drink-icons.mjs",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "compression": "^1.8.1",

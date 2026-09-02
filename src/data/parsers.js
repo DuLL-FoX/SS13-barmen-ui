@@ -577,36 +577,45 @@ const DISPENSER_TIER_PROPS = [
   { property: "emagged_reagents", key: "emag", label: "Emag" }
 ];
 
+// Matches `dispensable_reagents = list(`, `var/list/upgrade_reagents4 = list(`,
+// `upgrade_reagents |= list(` and `dispensable_reagents += extra_reagents`.
+// The property name must match exactly (word boundary) so `upgrade_reagents2`
+// never falls into the `upgrade_reagents` bucket.
+const DISPENSER_TIER_LINE = /^(?:var\/list\/|var\/)?([a-z_][a-z0-9_]*)\s*(\+=|\|=|=)\s*(.*)$/i;
+const LOCAL_LIST_LINE = /^var\/list\/([a-z_][a-z0-9_]*)\s*=\s*list\s*\(/i;
+const LAZYADD_LINE = /^LAZYADD\s*\(\s*([a-z_][a-z0-9_]*)\s*,\s*([^)]+?)\s*\)/i;
+
+function machinePathFromHeader(trimmed) {
+  const token = trimmed.split(/\s+/)[0];
+  const procIndex = token.search(/\/(proc|verb)\//);
+  if (procIndex !== -1) return { path: token.slice(0, procIndex), isProc: true };
+  const parenIndex = token.indexOf("(");
+  if (parenIndex !== -1) {
+    // `/obj/machinery/chem_dispenser/drinks/beer/Initialize(mapload)` -> override proc
+    const withoutArgs = token.slice(0, parenIndex);
+    const lastSlash = withoutArgs.lastIndexOf("/");
+    return { path: withoutArgs.slice(0, lastSlash), isProc: true };
+  }
+  return { path: token, isProc: false };
+}
+
 export function parseChemDispenserSources(dmText) {
   const lines = dmText.split(/\r?\n/);
-  const machines = [];
+  const machines = new Map();
   let current = null;
+  let localLists = new Map();
   let index = 0;
 
-  const finalizeCurrent = () => {
-    if (!current) {
-      return;
+  const getMachine = (machinePath) => {
+    if (!machines.has(machinePath)) {
+      machines.set(machinePath, { path: machinePath, name: null, tiers: new Map() });
     }
-    const tiers = DISPENSER_TIER_PROPS.map((tier) => {
-      const entries = current.tiers.get(tier.key) ?? [];
-      const unique = Array.from(new Set(entries.filter(Boolean)));
-      if (!unique.length) {
-        return null;
-      }
-      unique.sort();
-      return {
-        key: tier.key,
-        label: tier.label,
-        reagents: unique
-      };
-    }).filter(Boolean);
-    if (tiers.length) {
-      machines.push({
-        path: current.path,
-        name: current.name,
-        tiers
-      });
-    }
+    return machines.get(machinePath);
+  };
+
+  const addToTier = (machine, tierKey, reagents, { replace = false } = {}) => {
+    const existing = replace ? [] : machine.tiers.get(tierKey) ?? [];
+    machine.tiers.set(tierKey, existing.concat(reagents));
   };
 
   while (index < lines.length) {
@@ -617,20 +626,18 @@ export function parseChemDispenserSources(dmText) {
       continue;
     }
     if (trimmed.startsWith("/obj/machinery/chem_dispenser")) {
-      if (current) {
-        finalizeCurrent();
-      }
-      const path = trimmed.split(/\s+/)[0];
-      if (path.includes("/proc/") || path.includes("/verb/") || path.includes("(") || path.includes(")")) {
+      const header = machinePathFromHeader(trimmed);
+      current = getMachine(header.path);
+      localLists = new Map();
+      index += 1;
+      continue;
+    }
+    if (trimmed.startsWith("/") && !trimmed.startsWith("/obj/machinery/chem_dispenser")) {
+      // Any other type definition ends the current dispenser block.
+      if (/^\/(obj|datum|mob|turf|area|proc)\b/.test(trimmed)) {
         current = null;
-        index += 1;
-        continue;
+        localLists = new Map();
       }
-      current = {
-        path,
-        name: null,
-        tiers: new Map()
-      };
       index += 1;
       continue;
     }
@@ -638,35 +645,85 @@ export function parseChemDispenserSources(dmText) {
       index += 1;
       continue;
     }
-    if (trimmed.startsWith("name")) {
+    if (/^name\s*=/.test(trimmed)) {
       current.name = extractStringValue(trimmed) ?? current.name;
       index += 1;
       continue;
     }
-    const tier = DISPENSER_TIER_PROPS.find((entry) => trimmed.startsWith(entry.property));
-    if (tier) {
-      if (trimmed.includes("= null")) {
-        current.tiers.set(tier.key, current.tiers.get(tier.key) ?? []);
-        index += 1;
-        continue;
+
+    const lazyAdd = trimmed.match(LAZYADD_LINE);
+    if (lazyAdd) {
+      const tier = DISPENSER_TIER_PROPS.find((entry) => entry.property === lazyAdd[1]);
+      if (tier) {
+        const source = lazyAdd[2].trim();
+        if (localLists.has(source)) {
+          addToTier(current, tier.key, localLists.get(source));
+        } else if (/^list\s*\(/.test(source)) {
+          const { inner, nextIndex } = collectListBlock(lines, index);
+          addToTier(current, tier.key, parseListEntries(inner).map((e) => e.path?.trim()).filter(Boolean));
+          index = nextIndex;
+          continue;
+        }
       }
+      index += 1;
+      continue;
+    }
+
+    const localList = trimmed.match(LOCAL_LIST_LINE);
+    if (localList && !DISPENSER_TIER_PROPS.some((entry) => entry.property === localList[1])) {
       const { inner, nextIndex } = collectListBlock(lines, index);
-      const entries = parseListEntries(inner)
-        .map((item) => item.path?.trim())
-        .filter(Boolean);
-      const existing = current.tiers.get(tier.key) ?? [];
-      current.tiers.set(tier.key, existing.concat(entries));
+      localLists.set(localList[1], parseListEntries(inner).map((e) => e.path?.trim()).filter(Boolean));
       index = nextIndex;
       continue;
+    }
+
+    const assignment = trimmed.match(DISPENSER_TIER_LINE);
+    if (assignment) {
+      const tier = DISPENSER_TIER_PROPS.find((entry) => entry.property === assignment[1]);
+      if (tier) {
+        const operator = assignment[2];
+        const value = stripLineComment(assignment[3]).trim();
+        const replace = operator === "=";
+        if (value === "null" || value === "list()") {
+          if (replace) current.tiers.set(tier.key, []);
+          index += 1;
+          continue;
+        }
+        if (/^list\s*\(/.test(value)) {
+          const { inner, nextIndex } = collectListBlock(lines, index);
+          addToTier(current, tier.key, parseListEntries(inner).map((e) => e.path?.trim()).filter(Boolean), { replace });
+          index = nextIndex;
+          continue;
+        }
+        if (localLists.has(value)) {
+          addToTier(current, tier.key, localLists.get(value), { replace });
+          index += 1;
+          continue;
+        }
+        if (value.startsWith("/datum/reagent")) {
+          addToTier(current, tier.key, [value.replace(/,$/, "")], { replace });
+          index += 1;
+          continue;
+        }
+      }
     }
     index += 1;
   }
 
-  if (current) {
-    finalizeCurrent();
+  const result = [];
+  for (const machine of machines.values()) {
+    const tiers = DISPENSER_TIER_PROPS.map((tier) => {
+      const entries = machine.tiers.get(tier.key) ?? [];
+      const unique = Array.from(new Set(entries.filter(Boolean)));
+      if (!unique.length) return null;
+      unique.sort();
+      return { key: tier.key, label: tier.label, reagents: unique };
+    }).filter(Boolean);
+    if (tiers.length) {
+      result.push({ path: machine.path, name: machine.name, tiers });
+    }
   }
-
-  return machines;
+  return result;
 }
 
 export function parseStructureReagentDispensers(dmText) {

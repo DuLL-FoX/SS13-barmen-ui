@@ -36,14 +36,48 @@ function mergeReagentMaps(...maps) {
   return combined;
 }
 
-function describeSource(pathOrUrl) {
+export function describeSource(pathOrUrl) {
   if (pathOrUrl.includes("modular_splurt")) return "Modular Splurt";
   if (pathOrUrl.includes("modular_sand")) return "Modular Sand";
+  if (pathOrUrl.includes("modular_citadel")) return "Modular Citadel";
   if (pathOrUrl.includes("modular_bluemoon")) return "Modular BlueMoon";
   return "Core Station";
 }
 
-function isDrinkRecipe(recipe, reagentIndex) {
+/** Files whose every reaction is a drink by definition (bar recipe books). */
+export function isDrinkRecipeFile(sourcePath) {
+  if (!sourcePath) return false;
+  return /(^|\/)(synth_)?drinks?_recipes\.dm$/i.test(sourcePath);
+}
+
+const DRINK_PATH_HINTS = [
+  "/ethanol", "/drink", "/cocktail", "/juice", "/smoothie", "/milkshake", "/soda",
+  "/tea", "/coffee", "/milk", "/cola", "/lemonade", "/synthdrink"
+];
+
+/** Reagent files that only hold things you pour: drink_reagents.dm, alcohol_reagents.dm, drink_synth.dm … */
+export function isDrinkReagentFile(sourcePath) {
+  if (!sourcePath) return false;
+  return /(^|\/)(drink|alcohol)[a-z_]*\.dm$/i.test(sourcePath);
+}
+
+function reagentLooksLikeDrink(reagent, reagentPath) {
+  const lower = (reagentPath ?? "").toLowerCase();
+  if (DRINK_PATH_HINTS.some((hint) => lower.includes(hint))) return true;
+  if (!reagent) return false;
+  if (isDrinkReagentFile(reagent.sourcePath)) return true;
+  return Boolean(reagent.glassIcon || reagent.glassIconState || reagent.boozePower != null);
+}
+
+/**
+ * Decide whether a parsed reaction belongs in the bar book.
+ *
+ * Reactions that live in a dedicated drink recipe file are always drinks. For
+ * everything else (general chemistry files) the primary result must actually look
+ * like something you serve in a glass, so kitchen and lab chemistry such as
+ * sodium chloride, mustard or virus food never reaches the bartender.
+ */
+export function isDrinkRecipe(recipe, reagentIndex, { sourcePath = recipe?.sourcePath } = {}) {
   if (!recipe) return false;
   const primaryResults = selectPrimaryResults(recipe);
   if (!primaryResults.length) return false;
@@ -55,25 +89,17 @@ function isDrinkRecipe(recipe, reagentIndex) {
     return false;
   }
 
-  if (normalizedPaths.some((p) =>
-    p.includes("/datum/reagent/consumable/") || p.includes("/datum/reagent/food/") ||
-    p.includes("/datum/reagent/ethanol/") || p.includes("/datum/reagent/drink/") ||
-    p.includes("/obj/item/reagent_containers/food/drinks") || p.includes("/obj/item/food/drinks")
-  )) {
+  if (isDrinkRecipeFile(sourcePath)) {
+    return normalizedPaths.some((p) => p.includes("/datum/reagent/") || p.includes("/obj/item/reagent_containers/food/drinks"));
+  }
+
+  if (normalizedPaths.some((p) => p.includes("/obj/item/reagent_containers/food/drinks") || p.includes("/obj/item/food/drinks"))) {
     return true;
   }
 
-  if (reagentIndex instanceof Map) {
-    for (const result of primaryResults) {
-      const reagent = reagentIndex.get(result.path);
-      if (!reagent) continue;
-      const reagentPath = (reagent.path ?? "").toLowerCase();
-      if (reagent.glassIcon || reagent.glassIconState || reagent.icon || reagent.iconState ||
-          reagent.boozePower != null || reagentPath.includes("drink") ||
-          reagentPath.includes("cocktail") || reagentPath.includes("juice") || reagentPath.includes("smoothie")) {
-        return true;
-      }
-    }
+  for (const result of primaryResults) {
+    const reagent = reagentIndex instanceof Map ? reagentIndex.get(result.path) : null;
+    if (reagentLooksLikeDrink(reagent, reagent?.path ?? result.path)) return true;
   }
   return false;
 }
@@ -100,6 +126,38 @@ function tierOrder(key) {
 
 function tierLabel(key) {
   return SOURCE_TIERS.find((t) => t.key === key)?.label ?? toTitleCase(key.replace(/\d+/g, (m) => ` ${m}`));
+}
+
+/**
+ * Modular layers re-open the same machine path to add reagents (e.g. modular_sand
+ * adds Tier 4 lists to `/obj/machinery/chem_dispenser/drinks`) without repeating
+ * its name. Merge those fragments so each machine has one name and one set of tiers.
+ */
+export function mergeDispenserMachines(machines) {
+  const merged = new Map();
+  for (const machine of machines) {
+    if (!machine?.path) continue;
+    if (!merged.has(machine.path)) {
+      merged.set(machine.path, { path: machine.path, name: machine.name ?? null, tiers: new Map() });
+    }
+    const target = merged.get(machine.path);
+    if (!target.name && machine.name) target.name = machine.name;
+    for (const tier of machine.tiers ?? []) {
+      if (!tier?.key) continue;
+      if (!target.tiers.has(tier.key)) {
+        target.tiers.set(tier.key, { key: tier.key, label: tier.label ?? tierLabel(tier.key), reagents: new Set() });
+      }
+      const bucket = target.tiers.get(tier.key);
+      for (const reagent of tier.reagents ?? []) bucket.reagents.add(reagent);
+    }
+  }
+  return Array.from(merged.values()).map((machine) => ({
+    path: machine.path,
+    name: machine.name,
+    tiers: Array.from(machine.tiers.values())
+      .map((tier) => ({ key: tier.key, label: tier.label, reagents: Array.from(tier.reagents).sort() }))
+      .sort((a, b) => tierOrder(a.key) - tierOrder(b.key))
+  }));
 }
 
 function buildReagentSourceIndex(machines) {
@@ -339,44 +397,63 @@ function buildReagentList(reagentIndex, reagentSources, iconManifest) {
   return reagents.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
-async function fetchRecipeDataset() {
-  const dataSource = await createDataSource();
-  usingLocalData = dataSource.isLocal;
+/**
+ * Load one category of upstream files. A failure (network, rate limit, missing
+ * folder) is logged and yields an empty list so the other categories still load.
+ */
+async function loadCategory(label, loader) {
+  try {
+    const files = await loader();
+    if (!files.length) console.warn(`No files loaded for ${label}; the category will be empty`);
+    return files;
+  } catch (error) {
+    console.warn(`Failed to load ${label}: ${error.message}`);
+    return [];
+  }
+}
+
+export async function buildRecipeDataset(dataSource) {
   const recipeMap = new Map();
 
   const [recipeFiles, synthFiles, reagentFiles, dispenserFiles, containerFiles, vendingFiles, supplyFiles] = await Promise.all([
-    dataSource.fetchAllFiles(SOURCES.recipeFiles, SOURCES.recipeFolders),
-    dataSource.fetchFiles(SOURCES.synthRecipeFiles),
-    dataSource.fetchAllFiles(SOURCES.reagentFiles, SOURCES.reagentFolders),
-    dataSource.fetchAllFiles(SOURCES.dispenserFiles, SOURCES.dispenserFolders),
-    dataSource.fetchAllFiles(SOURCES.drinkContainerFiles, SOURCES.drinkContainerFolders),
-    dataSource.fetchAllFiles(SOURCES.vendingFiles, SOURCES.vendingFolders),
-    dataSource.fetchAllFiles(SOURCES.supplyPackFiles, SOURCES.supplyPackFolders)
+    loadCategory("recipes", () => dataSource.fetchAllFiles(SOURCES.recipeFiles, SOURCES.recipeFolders)),
+    loadCategory("synth recipes", () => dataSource.fetchFiles(SOURCES.synthRecipeFiles)),
+    loadCategory("reagents", () => dataSource.fetchAllFiles(SOURCES.reagentFiles, SOURCES.reagentFolders)),
+    loadCategory("dispensers", () => dataSource.fetchAllFiles(SOURCES.dispenserFiles, SOURCES.dispenserFolders)),
+    loadCategory("drink containers", () => dataSource.fetchAllFiles(SOURCES.drinkContainerFiles, SOURCES.drinkContainerFolders)),
+    loadCategory("vending machines", () => dataSource.fetchAllFiles(SOURCES.vendingFiles, SOURCES.vendingFolders)),
+    loadCategory("supply packs", () => dataSource.fetchAllFiles(SOURCES.supplyPackFiles, SOURCES.supplyPackFolders))
   ]);
 
   for (const { path, text } of recipeFiles) {
     const sourceLabel = describeSource(path);
     for (const definition of parseChemicalReactions(text)) {
       if (!recipeMap.has(definition.path)) {
-        recipeMap.set(definition.path, { ...definition, source: sourceLabel });
+        recipeMap.set(definition.path, { ...definition, source: sourceLabel, sourcePath: path });
       }
     }
   }
-  for (const { text } of synthFiles) {
+  for (const { path, text } of synthFiles) {
     for (const definition of parseChemicalReactions(text)) {
       if (!recipeMap.has(definition.path)) {
-        recipeMap.set(definition.path, { ...definition, source: "Synth Drinks" });
+        recipeMap.set(definition.path, { ...definition, source: "Synth Drinks", sourcePath: path });
       }
     }
   }
 
-  const reagentMaps = reagentFiles.map(({ text }) => parseReagents(text));
+  const reagentMaps = reagentFiles.map(({ path, text }) => {
+    const parsed = parseReagents(text);
+    for (const reagent of parsed.values()) reagent.sourcePath = path;
+    return parsed;
+  });
   const reagentIndex = mergeReagentMaps(...reagentMaps);
 
-  const dispenserMachines = dispenserFiles.flatMap(({ text }) => [
-    ...parseChemDispenserSources(text),
-    ...parseStructureReagentDispensers(text)
-  ]);
+  const dispenserMachines = mergeDispenserMachines(
+    dispenserFiles.flatMap(({ text }) => [
+      ...parseChemDispenserSources(text),
+      ...parseStructureReagentDispensers(text)
+    ])
+  );
 
   const containerMaps = containerFiles.map(({ text }) => parseDrinkContainers(text));
   const containerIndex = mergeContainerMaps(...containerMaps);
@@ -392,8 +469,8 @@ async function fetchRecipeDataset() {
 
   const iconManifest = loadIconManifest();
   const normalizedRecipes = Array.from(recipeMap.values())
-    .map((def) => normalizeRecipe(def, reagentIndex, reagentSources))
-    .filter((recipe) => isDrinkRecipe(recipe, reagentIndex));
+    .filter((def) => isDrinkRecipe(def, reagentIndex, { sourcePath: def.sourcePath }))
+    .map((def) => normalizeRecipe(def, reagentIndex, reagentSources));
 
   attachRecipeIcons(normalizedRecipes, containerIndex, iconManifest, reagentIndex);
   linkRecipeDependencies(normalizedRecipes);
@@ -402,15 +479,33 @@ async function fetchRecipeDataset() {
   const ingredients = buildIngredientIndex(normalizedRecipes, reagentIndex, reagentSources);
   const reagents = buildReagentList(reagentIndex, reagentSources, iconManifest);
 
-  console.log(`Loaded ${normalizedRecipes.length} recipes from ${dataSource.isLocal ? "local folder" : "GitHub"}`);
+  const stats = {
+    recipes: normalizedRecipes.length,
+    reagents: reagents.length,
+    dispensers: dispenserMachines.length,
+    vendors: vendingMachines.length,
+    supplyPacks: supplyPacks.length,
+    containers: containerIndex.size
+  };
+  console.log(
+    `Loaded ${stats.recipes} recipes, ${stats.reagents} reagents, ${stats.dispensers} dispensers, ` +
+    `${stats.vendors} vendors, ${stats.supplyPacks} supply packs from ${dataSource.isLocal ? "local folder" : "GitHub"}`
+  );
 
   return {
     fetchedAt: new Date().toISOString(),
     version: dataSource.version,
+    stats,
     recipes: normalizedRecipes,
     ingredients,
     reagents
   };
+}
+
+async function fetchRecipeDataset() {
+  const dataSource = await createDataSource();
+  usingLocalData = dataSource.isLocal;
+  return buildRecipeDataset(dataSource);
 }
 
 export async function getRecipeDataset({ forceRefresh = false } = {}) {

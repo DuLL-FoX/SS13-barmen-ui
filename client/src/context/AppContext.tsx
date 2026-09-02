@@ -78,10 +78,12 @@ export function AppProvider({ children }: AppProviderProps) {
   const [sourceCategorySearchTerm, setSourceCategorySearchTerm] = useState('');
   const [sourceCategoryShowAll, setSourceCategoryShowAll] = useState(false);
 
+  // Several reactions can produce the same reagent (e.g. two ways to brew Forest
+  // Tea), so the reaction path is the identity, never the result id.
   const dedupeRecipes = (list: Recipe[]): Recipe[] => {
     const seen = new Set<string>();
     return list.filter((r) => {
-      const key = (r.id ?? r.path ?? r.name ?? '').toLowerCase();
+      const key = (r.path ?? r.id ?? r.name ?? '').toLowerCase();
       if (!key) return false;
       if (seen.has(key)) return false;
       seen.add(key);

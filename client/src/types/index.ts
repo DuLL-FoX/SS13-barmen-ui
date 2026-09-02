@@ -80,9 +80,12 @@ export interface Ingredient {
 export interface GameVersion {
   branch?: string;
   commit?: string;
+  commitFull?: string;
   commitUrl?: string;
   commitMessage?: string;
   commitDate?: string;
+  repository?: string;
+  isLocal?: boolean;
 }
 
 export interface RecipeApiResponse {

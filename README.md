@@ -47,6 +47,8 @@ A lightweight Express + static front-end companion for tracking and searching th
 | `npm start` | Launches the Express server in production mode. |
 | `npm run dev` | Runs `src/server.js` with `NODE_ENV=development` (useful for verbose logging). |
 | `npm run extract:drinks` | Rebuilds the drink icon manifest and GIF assets from upstream DMI files. |
+| `npm test` | Runs the parser / data-source regression suite (`node:test`, no extra dependencies). |
+| `npm run build:client` | Builds the React client into `client/dist`. |
 
 ## Environment
 | Variable | Default | Notes |
@@ -54,9 +56,12 @@ A lightweight Express + static front-end companion for tracking and searching th
 | `PORT` | `3000` | HTTP port for the Express server. The Dockerfile defaults to `24322`. |
 | `NODE_ENV` | `production` | Controls Express/compression and runtime logging. |
 | `GITHUB_TOKEN` | _unset_ | Personal access token used when contacting the GitHub API. Without it, requests are limited to 60/hour; with it, the app inherits your token's quota. |
+| `USE_LOCAL_DATA` | `false` | When `true`, read `.dm` files from a checkout on disk instead of GitHub. |
+| `LOCAL_BLUEMOON_PATH` | `./BlueMoon-Station` | Path of that checkout. The game version is read straight from its `.git` folder, so no `git` binary is needed inside the container. |
 
 ## Dataset Lifecycle
-- The dataset loader fetches raw `.dm` files from URLs defined in `src/data/githubSources.js`.
+- The dataset loader reads the `.dm` files and folders listed in `SOURCES` (`src/data/dataSource.js`), either from GitHub or from a local checkout.
+- Every configured file or folder is optional: upstream regularly moves modular files around, so a missing path is logged as a warning and skipped. A category (recipes, reagents, dispensers, vendors, supply packs…) only ends up empty if none of its paths exist.
 - Responses are cached in-memory for 15 minutes (`CACHE_TTL_MS`). Subsequent API calls hit the cache instead of re-querying GitHub.
 - A preload runs during server start; if it fails, the process exits with a non-zero status.
 - The dataset includes linked recipes (`requiredRecipes`, `dependentRecipes`), ingredient metadata, icon references, and availability derived from dispensers, vendors, and supply packs.
